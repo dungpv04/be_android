@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import API routers
-from app.api.endpoints import auth, health
+from app.api.endpoints import auth, health, admin
 
 app = FastAPI(
     title="Attendance Management System API",
@@ -22,6 +22,7 @@ app.add_middleware(
 # Include API routers
 app.include_router(auth.router)
 app.include_router(health.router)
+app.include_router(admin.router)
 
 
 @app.on_event("startup")

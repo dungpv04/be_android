@@ -35,12 +35,19 @@ async def login(user_credentials: UserLogin):
         
         user_id = auth_response['id']
         user_email = auth_response.get('email', '')
+        user_metadata = auth_response.get('user_metadata', {})
         
-        # For now, determine user type from email or metadata
-        # You can customize this logic based on your needs
-        user_type = "student"  # Default to student
-        if "teacher" in user_email or "admin" in user_email:
-            user_type = "teacher"
+        # Determine user type from metadata or email
+        user_type = user_metadata.get('role', 'student')  # Get from metadata first
+        
+        # Fallback to email-based detection if no role in metadata
+        if not user_type or user_type == 'student':
+            if "admin" in user_email.lower():
+                user_type = "admin"
+            elif "teacher" in user_email.lower():
+                user_type = "teacher"
+            else:
+                user_type = "student"
         
         # Generate JWT token
         access_token = security_manager.create_access_token(

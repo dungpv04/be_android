@@ -182,6 +182,140 @@ class SupabaseService:
                 detail="Token refresh failed"
             )
 
+    # Admin user management methods
+    async def admin_create_user(
+        self, 
+        email: str, 
+        password: str, 
+        user_metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Create a new user as admin."""
+        if not self.is_configured():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service not configured"
+            )
+        
+        try:
+            response = self.admin.auth.admin.create_user({
+                "email": email,
+                "password": password,
+                "email_confirm": True,
+                "user_metadata": user_metadata or {}
+            })
+            
+            if response.user:
+                return {
+                    "id": response.user.id,
+                    "email": response.user.email,
+                    "user_metadata": response.user.user_metadata,
+                    "created_at": response.user.created_at
+                }
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to create user"
+                )
+        except Exception as e:
+            logger.error(f"Admin user creation failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User creation failed: {str(e)}"
+            )
+    
+    async def admin_delete_user(self, user_id: str) -> bool:
+        """Delete a user as admin."""
+        if not self.is_configured():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service not configured"
+            )
+        
+        try:
+            response = self.admin.auth.admin.delete_user(user_id)
+            return True
+        except Exception as e:
+            logger.error(f"Admin user deletion failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User deletion failed: {str(e)}"
+            )
+    
+    async def admin_update_user(
+        self, 
+        user_id: str, 
+        email: Optional[str] = None,
+        password: Optional[str] = None,
+        user_metadata: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Update a user as admin."""
+        if not self.is_configured():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service not configured"
+            )
+        
+        try:
+            update_data = {}
+            if email:
+                update_data["email"] = email
+            if password:
+                update_data["password"] = password
+            if user_metadata:
+                update_data["user_metadata"] = user_metadata
+            
+            response = self.admin.auth.admin.update_user_by_id(user_id, update_data)
+            
+            if response.user:
+                return {
+                    "id": response.user.id,
+                    "email": response.user.email,
+                    "user_metadata": response.user.user_metadata
+                }
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Failed to update user"
+                )
+        except Exception as e:
+            logger.error(f"Admin user update failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"User update failed: {str(e)}"
+            )
+    
+    async def admin_list_users(self, page: int = 1, per_page: int = 100) -> Dict[str, Any]:
+        """List all users as admin."""
+        if not self.is_configured():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service not configured"
+            )
+        
+        try:
+            response = self.admin.auth.admin.list_users(page=page, per_page=per_page)
+            
+            users = []
+            for user in response:
+                users.append({
+                    "id": user.id,
+                    "email": user.email,
+                    "user_metadata": user.user_metadata,
+                    "created_at": user.created_at,
+                    "last_sign_in_at": user.last_sign_in_at
+                })
+            
+            return {
+                "users": users,
+                "total": len(users)
+            }
+        except Exception as e:
+            logger.error(f"Admin list users failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to list users: {str(e)}"
+            )
+
 
 # Global Supabase service instance
 supabase_service = SupabaseService()
