@@ -10,6 +10,7 @@ from app.api.endpoints.teaching_sessions import router as teaching_sessions_rout
 from app.api.endpoints.majors import router as majors_router
 from app.api.endpoints.cohorts import router as cohorts_router
 from app.api.endpoints.classes import router as classes_router
+from app.api.endpoints.attendances import router as attendances_router
 
 app = FastAPI(
     title="Attendance Management System API",
@@ -37,6 +38,7 @@ app.include_router(teaching_sessions_router)
 app.include_router(majors_router)
 app.include_router(cohorts_router)
 app.include_router(classes_router)
+app.include_router(attendances_router)
 
 
 @app.on_event("startup")
