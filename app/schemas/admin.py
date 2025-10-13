@@ -2,7 +2,7 @@
 Admin schemas for user management operations.
 """
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date
 from pydantic import Field, EmailStr, validator
 import uuid
 
@@ -48,7 +48,7 @@ class TeacherCreateRequest(BaseSchema):
     full_name: str = Field(..., min_length=1, max_length=255, description="Full name")
     teacher_code: str = Field(..., min_length=1, max_length=50, description="Unique teacher code")
     phone: Optional[str] = Field(None, max_length=20, description="Phone number")
-    birth_date: Optional[datetime] = Field(None, description="Date of birth")
+    birth_date: Optional[date] = Field(None, description="Date of birth")
     
     @validator('teacher_code')
     def validate_teacher_code(cls, v):
@@ -66,7 +66,7 @@ class StudentCreateRequest(BaseSchema):
     full_name: str = Field(..., min_length=1, max_length=255, description="Full name")
     student_code: str = Field(..., min_length=1, max_length=50, description="Unique student code")
     phone: Optional[str] = Field(None, max_length=20, description="Phone number")
-    birth_date: Optional[datetime] = Field(None, description="Date of birth")
+    birth_date: Optional[date] = Field(None, description="Date of birth")
     major_id: Optional[int] = Field(None, description="Major ID")
     cohort_id: Optional[int] = Field(None, description="Cohort ID")
     class_id: Optional[int] = Field(None, description="Direct class assignment")

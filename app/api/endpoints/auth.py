@@ -3,10 +3,13 @@ Authentication API endpoints for Supabase.
 """
 from fastapi import APIRouter, HTTPException, status
 from fastapi.security import HTTPBearer
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from app.core.security import SecurityManager
 from app.services.supabase import SupabaseService
+from app.repositories.teachers import TeacherRepository
+from app.repositories.students import StudentRepository
+from app.repositories.admin import AdminRepository
 from app.schemas.users import UserLogin, Token
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -33,32 +36,62 @@ async def login(user_credentials: UserLogin):
                 detail="Invalid credentials"
             )
         
-        user_id = auth_response['id']
+        auth_id = auth_response['id']
         user_email = auth_response.get('email', '')
-        user_metadata = auth_response.get('user_metadata', {})
         
-        # Determine user type from metadata or email
-        user_type = user_metadata.get('role', 'student')  # Get from metadata first
+        # Look up user profile and role from database tables
+        user_role = None
+        user_profile_id = None
+        user_profile = None
         
-        # Fallback to email-based detection if no role in metadata
-        if not user_type or user_type == 'student':
-            if "admin" in user_email.lower():
-                user_type = "admin"
-            elif "teacher" in user_email.lower():
-                user_type = "teacher"
-            else:
-                user_type = "student"
+        # Check admin table first
+        admin_repo = AdminRepository()
+        admin_profile = await admin_repo.get_by_auth_id(auth_id)
+        if admin_profile:
+            user_role = "admin"
+            user_profile_id = admin_profile["id"]
+            user_profile = admin_profile
         
-        # Generate JWT token
+        # Check teacher table if not admin
+        if not user_role:
+            teacher_repo = TeacherRepository()
+            teacher_profile = await teacher_repo.get_by_auth_id(auth_id)
+            if teacher_profile:
+                user_role = "teacher"
+                user_profile_id = teacher_profile["id"]
+                user_profile = teacher_profile
+        
+        # Check student table if not admin or teacher
+        if not user_role:
+            student_repo = StudentRepository()
+            student_profile = await student_repo.get_by_auth_id(auth_id)
+            if student_profile:
+                user_role = "student"
+                user_profile_id = student_profile["id"]
+                user_profile = student_profile
+        
+        # If no profile found in any table, deny access
+        if not user_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User profile not found. Contact administrator."
+            )
+        
+        # Generate JWT token with user profile info
         access_token = security_manager.create_access_token(
-            data={"user_id": user_id, "user_type": user_type, "email": user_email}
+            data={
+                "auth_id": auth_id,
+                "user_role": user_role,
+                "user_profile_id": user_profile_id,
+                "email": user_email
+            }
         )
         
         return Token(
             access_token=access_token,
             token_type="bearer",
-            user_id=user_id,
-            user_type=user_type
+            user_id=auth_id,
+            user_type=user_role
         )
         
     except HTTPException:

@@ -69,9 +69,11 @@ class SupabaseService:
         self, 
         email: str, 
         password: str, 
-        user_metadata: Optional[Dict[str, Any]] = None
+        user_metadata: Optional[Dict[str, Any]] = None,
+        user_role: str = None,
+        profile_data: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """Register a new user with Supabase Auth."""
+        """Register a new user with Supabase Auth and create profile record."""
         if not self.is_configured():
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -79,30 +81,104 @@ class SupabaseService:
             )
         
         try:
-            response = self.admin.auth.admin.create_user({
+            # Use standard Supabase signup
+            response = self.client.auth.sign_up({
                 "email": email,
                 "password": password,
-                "email_confirm": True,
-                "user_metadata": user_metadata or {}
+                "options": {
+                    "data": user_metadata or {}
+                }
             })
             
-            if response.user:
-                return {
-                    "id": response.user.id,
-                    "email": response.user.email,
-                    "user_metadata": response.user.user_metadata
-                }
-            else:
+            if not response.user:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Failed to create user"
+                    detail="Failed to create user account"
                 )
+            
+            auth_user = response.user
+            logger.info(f"Successfully created auth user: {auth_user.id}")
+            
+            # Create profile record in appropriate table based on role
+            if user_role and profile_data:
+                await self._create_user_profile(auth_user.id, user_role, profile_data)
+            
+            return {
+                "id": auth_user.id,
+                "email": auth_user.email,
+                "user_metadata": auth_user.user_metadata,
+                "created_at": auth_user.created_at
+            }
+            
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f"User registration failed: {e}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Registration failed: {str(e)}"
             )
+    
+    async def _create_user_profile(self, auth_id: str, user_role: str, profile_data: Dict[str, Any]):
+        """Create user profile record in the appropriate table using repositories."""
+        try:
+            from uuid import UUID
+            from datetime import datetime
+            
+            if user_role == "TEACHER":
+                from app.repositories.teachers import TeacherRepository
+                from app.schemas.users import TeacherCreate
+                
+                teacher_repo = TeacherRepository()
+                
+                # Convert birth_date string back to date if it exists
+                birth_date = None
+                if profile_data.get("birth_date"):
+                    birth_date = datetime.fromisoformat(profile_data["birth_date"]).date()
+                
+                teacher_create_data = TeacherCreate(
+                    auth_id=UUID(auth_id),
+                    teacher_code=profile_data.get("teacher_code"),
+                    full_name=profile_data.get("full_name"),
+                    phone=profile_data.get("phone"),
+                    birth_date=birth_date
+                )
+                
+                teacher_record = await teacher_repo.create(teacher_create_data)
+                logger.info(f"Created teacher profile: {teacher_record}")
+                
+            elif user_role == "STUDENT":
+                from app.repositories.students import StudentRepository
+                from app.schemas.users import StudentCreate
+                
+                student_repo = StudentRepository()
+                
+                # Convert birth_date string back to date if it exists
+                birth_date = None
+                if profile_data.get("birth_date"):
+                    birth_date = datetime.fromisoformat(profile_data["birth_date"]).date()
+                
+                student_create_data = StudentCreate(
+                    auth_id=UUID(auth_id),
+                    student_code=profile_data.get("student_code"),
+                    full_name=profile_data.get("full_name"),
+                    phone=profile_data.get("phone"),
+                    birth_date=birth_date,
+                    major_id=profile_data.get("major_id"),
+                    cohort_id=profile_data.get("cohort_id"),
+                    class_id=profile_data.get("class_id")
+                )
+                
+                student_record = await student_repo.create(student_create_data)
+                logger.info(f"Created student profile: {student_record}")
+                
+            else:
+                logger.warning(f"Unknown user role: {user_role}")
+                
+        except Exception as e:
+            logger.error(f"Failed to create user profile: {e}")
+            # Don't raise exception here as auth user was already created
+            # Could implement cleanup logic here if needed
     
     async def authenticate_user(self, email: str, password: str) -> Dict[str, Any]:
         """Authenticate user with Supabase."""
@@ -181,6 +257,8 @@ class SupabaseService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token refresh failed"
             )
+
+
 
     # Admin user management methods
     async def admin_create_user(

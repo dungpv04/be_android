@@ -2,11 +2,15 @@
 Admin API endpoints for user management.
 """
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import uuid
+import logging
 
 from app.core.dependencies import get_admin_user
+from app.core.auth_db import get_admin_user_db
 from app.core.roles import UserRole
+
+logger = logging.getLogger(__name__)
 from app.services.supabase import SupabaseService
 from app.repositories.teachers import TeacherRepository
 from app.repositories.students import StudentRepository
@@ -15,12 +19,8 @@ from app.schemas.admin import (
     StudentCreateRequest,
     TeacherCreateResponse,
     StudentCreateResponse,
-    UserUpdateRequest, 
     UserResponse, 
-    UserListResponse,
-    UserDeleteResponse,
-    BulkUserOperation,
-    BulkOperationResponse
+    UserListResponse
 )
 from app.schemas.users import TeacherCreate, StudentCreate
 
@@ -46,7 +46,22 @@ async def create_teacher(
                 detail=f"Teacher code '{teacher_data.teacher_code}' already exists"
             )
         
-        # Prepare teacher metadata
+        # STEP 1: Validate DTO first (before creating account)
+        from app.schemas.users import TeacherCreate
+        # Use temporary UUID for validation
+        import uuid
+        temp_auth_id = uuid.uuid4()
+        
+        teacher_create_data = TeacherCreate(
+            auth_id=temp_auth_id,
+            teacher_code=teacher_data.teacher_code,
+            full_name=teacher_data.full_name,
+            phone=teacher_data.phone,
+            birth_date=teacher_data.birth_date
+        )
+        # If we reach here, DTO validation passed
+        
+        # STEP 2: Create Supabase Auth account
         user_metadata = {
             "role": UserRole.TEACHER.value,
             "full_name": teacher_data.full_name,
@@ -55,23 +70,14 @@ async def create_teacher(
             "birth_date": teacher_data.birth_date.isoformat() if teacher_data.birth_date else None
         }
         
-        # Create user in Supabase Auth
-        auth_result = await supabase_service.admin_create_user(
+        auth_result = await supabase_service.register_user(
             email=teacher_data.email,
             password=teacher_data.password,
             user_metadata=user_metadata
         )
         
-        # Create corresponding record in teachers table
-        from app.schemas.users import TeacherCreate
-        teacher_create_data = TeacherCreate(
-            auth_id=uuid.UUID(auth_result["id"]),
-            teacher_code=teacher_data.teacher_code,
-            full_name=teacher_data.full_name,
-            phone=teacher_data.phone,
-            birth_date=teacher_data.birth_date
-        )
-        
+        # STEP 3: Create teacher record with real auth_id
+        teacher_create_data.auth_id = uuid.UUID(auth_result["id"])
         teacher_record = await teacher_repo.create(teacher_create_data)
         
         return TeacherCreateResponse(
@@ -111,7 +117,25 @@ async def create_student(
                 detail=f"Student code '{student_data.student_code}' already exists"
             )
         
-        # Prepare student metadata
+        # STEP 1: Validate DTO first (before creating account)
+        from app.schemas.users import StudentCreate
+        # Use temporary UUID for validation
+        import uuid
+        temp_auth_id = uuid.uuid4()
+        
+        student_create_data = StudentCreate(
+            auth_id=temp_auth_id,
+            student_code=student_data.student_code,
+            full_name=student_data.full_name,
+            phone=student_data.phone,
+            birth_date=student_data.birth_date,
+            major_id=student_data.major_id,
+            cohort_id=student_data.cohort_id,
+            class_id=student_data.class_id
+        )
+        # If we reach here, DTO validation passed
+        
+        # STEP 2: Create Supabase Auth account
         user_metadata = {
             "role": UserRole.STUDENT.value,
             "full_name": student_data.full_name,
@@ -123,26 +147,14 @@ async def create_student(
             "class_id": student_data.class_id
         }
         
-        # Create user in Supabase Auth
-        auth_result = await supabase_service.admin_create_user(
+        auth_result = await supabase_service.register_user(
             email=student_data.email,
             password=student_data.password,
             user_metadata=user_metadata
         )
         
-        # Create corresponding record in students table
-        from app.schemas.users import StudentCreate
-        student_create_data = StudentCreate(
-            auth_id=uuid.UUID(auth_result["id"]),
-            student_code=student_data.student_code,
-            full_name=student_data.full_name,
-            phone=student_data.phone,
-            birth_date=student_data.birth_date,
-            major_id=student_data.major_id,
-            cohort_id=student_data.cohort_id,
-            class_id=student_data.class_id
-        )
-        
+        # STEP 3: Create student record with real auth_id
+        student_create_data.auth_id = uuid.UUID(auth_result["id"])
         student_record = await student_repo.create(student_create_data)
         
         return StudentCreateResponse(
@@ -163,6 +175,373 @@ async def create_student(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Student creation failed: {str(e)}"
+        )
+
+
+# Teacher Management Endpoints
+@router.get("/teachers")
+async def list_teachers(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(50, ge=1, le=100, description="Number of records to return"),
+    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+):
+    """List all teachers with pagination."""
+    try:
+        teacher_repo = TeacherRepository()
+        teachers = await teacher_repo.get_all(skip=skip, limit=limit)
+        return {"teachers": teachers, "total": len(teachers)}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list teachers: {str(e)}"
+        )
+
+
+@router.get("/teachers/{teacher_id}")
+async def get_teacher(
+    teacher_id: int,
+    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+):
+    """Get a specific teacher by ID."""
+    try:
+        teacher_repo = TeacherRepository()
+        teacher = await teacher_repo.get_by_id(teacher_id)
+        
+        if not teacher:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Teacher not found"
+            )
+        
+        return teacher
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get teacher: {str(e)}"
+        )
+
+
+@router.put("/teachers/{teacher_id}")
+async def update_teacher(
+    teacher_id: int,
+    teacher_data: Dict[str, Any],
+    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+):
+    """Update a teacher's information."""
+    try:
+        from app.schemas.users import TeacherUpdate
+        teacher_repo = TeacherRepository()
+        
+        # Validate update data
+        teacher_update = TeacherUpdate(**teacher_data)
+        
+        # Update teacher record
+        updated_teacher = await teacher_repo.update(teacher_id, teacher_update)
+        
+        if not updated_teacher:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Teacher not found"
+            )
+        
+        return {"message": "Teacher updated successfully", "teacher": updated_teacher}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update teacher: {str(e)}"
+        )
+
+
+@router.delete("/teachers/{teacher_id}")
+async def delete_teacher(
+    teacher_id: int,
+    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+):
+    """Delete a teacher and their auth account."""
+    try:
+        teacher_repo = TeacherRepository()
+        supabase_service = SupabaseService()
+        
+        # Get teacher info before deletion
+        teacher = await teacher_repo.get_by_id(teacher_id)
+        if not teacher:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Teacher not found"
+            )
+        
+        # Delete from auth
+        try:
+            await supabase_service.admin_delete_user(str(teacher["auth_id"]))
+        except Exception as auth_error:
+            # Log but continue - database record should still be deleted
+            logger.warning(f"Failed to delete auth user: {auth_error}")
+        
+        # Delete teacher record
+        await teacher_repo.delete(teacher_id)
+        
+        return {"message": "Teacher deleted successfully", "deleted_id": teacher_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete teacher: {str(e)}"
+        )
+
+
+# Student Management Endpoints
+@router.get("/students")
+async def list_students(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(50, ge=1, le=100, description="Number of records to return"),
+    major_id: Optional[int] = Query(None, description="Filter by major"),
+    cohort_id: Optional[int] = Query(None, description="Filter by cohort"),
+    class_id: Optional[int] = Query(None, description="Filter by class"),
+    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+):
+    """List all students with pagination and filtering."""
+    try:
+        student_repo = StudentRepository()
+        
+        if major_id:
+            students = await student_repo.get_by_major(major_id, skip=skip, limit=limit)
+        elif cohort_id:
+            students = await student_repo.get_by_cohort(cohort_id, skip=skip, limit=limit)
+        elif class_id:
+            students = await student_repo.get_by_class(class_id, skip=skip, limit=limit)
+        else:
+            students = await student_repo.get_all(skip=skip, limit=limit)
+            
+        return {"students": students, "total": len(students)}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list students: {str(e)}"
+        )
+
+
+@router.get("/students/{student_id}")
+async def get_student(
+    student_id: int,
+    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+):
+    """Get a specific student by ID."""
+    try:
+        student_repo = StudentRepository()
+        student = await student_repo.get_by_id(student_id)
+        
+        if not student:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Student not found"
+            )
+        
+        return student
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get student: {str(e)}"
+        )
+
+
+@router.put("/students/{student_id}")
+async def update_student(
+    student_id: int,
+    student_data: Dict[str, Any],
+    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+):
+    """Update a student's information."""
+    try:
+        from app.schemas.users import StudentUpdate
+        student_repo = StudentRepository()
+        
+        # Validate update data
+        student_update = StudentUpdate(**student_data)
+        
+        # Update student record
+        updated_student = await student_repo.update(student_id, student_update)
+        
+        if not updated_student:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Student not found"
+            )
+        
+        return {"message": "Student updated successfully", "student": updated_student}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update student: {str(e)}"
+        )
+
+
+@router.delete("/students/{student_id}")
+async def delete_student(
+    student_id: int,
+    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+):
+    """Delete a student and their auth account."""
+    try:
+        student_repo = StudentRepository()
+        supabase_service = SupabaseService()
+        
+        # Get student info before deletion
+        student = await student_repo.get_by_id(student_id)
+        if not student:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Student not found"
+            )
+        
+        # Delete from auth
+        try:
+            await supabase_service.admin_delete_user(str(student["auth_id"]))
+        except Exception as auth_error:
+            # Log but continue - database record should still be deleted
+            logger.warning(f"Failed to delete auth user: {auth_error}")
+        
+        # Delete student record
+        await student_repo.delete(student_id)
+        
+        return {"message": "Student deleted successfully", "deleted_id": student_id}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete student: {str(e)}"
+        )
+
+
+# Bulk Operations
+@router.post("/teachers/bulk")
+async def bulk_teacher_operation(
+    operation_data: Dict[str, Any],
+    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+):
+    """Perform bulk operations on multiple teachers."""
+    try:
+        teacher_repo = TeacherRepository()
+        supabase_service = SupabaseService()
+        
+        operation = operation_data.get("operation")
+        teacher_ids = operation_data.get("teacher_ids", [])
+        
+        successful = 0
+        failed = 0
+        errors = []
+        successful_ids = []
+        
+        for teacher_id in teacher_ids:
+            try:
+                if operation == "delete":
+                    teacher = await teacher_repo.get_by_id(teacher_id)
+                    if teacher:
+                        # Delete auth user
+                        try:
+                            await supabase_service.admin_delete_user(str(teacher["auth_id"]))
+                        except Exception:
+                            pass  # Continue even if auth deletion fails
+                        
+                        # Delete teacher record
+                        await teacher_repo.delete(teacher_id)
+                        successful += 1
+                        successful_ids.append(teacher_id)
+                    else:
+                        failed += 1
+                        errors.append(f"Teacher {teacher_id}: Not found")
+                
+            except Exception as e:
+                failed += 1
+                errors.append(f"Teacher {teacher_id}: {str(e)}")
+        
+        return {
+            "operation": operation,
+            "total_requested": len(teacher_ids),
+            "successful": successful,
+            "failed": failed,
+            "errors": errors,
+            "successful_ids": successful_ids
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Bulk teacher operation failed: {str(e)}"
+        )
+
+
+@router.post("/students/bulk")
+async def bulk_student_operation(
+    operation_data: Dict[str, Any],
+    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+):
+    """Perform bulk operations on multiple students."""
+    try:
+        student_repo = StudentRepository()
+        supabase_service = SupabaseService()
+        
+        operation = operation_data.get("operation")
+        student_ids = operation_data.get("student_ids", [])
+        
+        successful = 0
+        failed = 0
+        errors = []
+        successful_ids = []
+        
+        for student_id in student_ids:
+            try:
+                if operation == "delete":
+                    student = await student_repo.get_by_id(student_id)
+                    if student:
+                        # Delete auth user
+                        try:
+                            await supabase_service.admin_delete_user(str(student["auth_id"]))
+                        except Exception:
+                            pass  # Continue even if auth deletion fails
+                        
+                        # Delete student record
+                        await student_repo.delete(student_id)
+                        successful += 1
+                        successful_ids.append(student_id)
+                    else:
+                        failed += 1
+                        errors.append(f"Student {student_id}: Not found")
+                
+            except Exception as e:
+                failed += 1
+                errors.append(f"Student {student_id}: {str(e)}")
+        
+        return {
+            "operation": operation,
+            "total_requested": len(student_ids),
+            "successful": successful,
+            "failed": failed,
+            "errors": errors,
+            "successful_ids": successful_ids
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Bulk student operation failed: {str(e)}"
         )
 
 
@@ -259,146 +638,6 @@ async def get_user(
             detail=f"Failed to get user: {str(e)}"
         )
 
-
-@router.put("/users/{user_id}", response_model=UserResponse)
-async def update_user(
-    user_id: uuid.UUID,
-    user_data: UserUpdateRequest,
-    admin_user: Dict[str, Any] = Depends(get_admin_user)
-):
-    """Update a user's information."""
-    try:
-        supabase_service = SupabaseService()
-        
-        # Prepare update data
-        update_metadata = {}
-        if user_data.full_name:
-            update_metadata["full_name"] = user_data.full_name
-        if user_data.phone:
-            update_metadata["phone"] = user_data.phone
-        if user_data.birth_date:
-            update_metadata["birth_date"] = user_data.birth_date.isoformat()
-        if user_data.teacher_code:
-            update_metadata["teacher_code"] = user_data.teacher_code
-        if user_data.student_code:
-            update_metadata["student_code"] = user_data.student_code
-        if user_data.major_id:
-            update_metadata["major_id"] = user_data.major_id
-        if user_data.cohort_id:
-            update_metadata["cohort_id"] = user_data.cohort_id
-        
-        # Update user in Supabase
-        result = await supabase_service.admin_update_user(
-            user_id=str(user_id),
-            email=user_data.email,
-            user_metadata=update_metadata if update_metadata else None
-        )
-        
-        user_metadata = result.get("user_metadata", {})
-        
-        return UserResponse(
-            auth_id=result["id"],
-            email=result["email"],
-            role=UserRole(user_metadata.get("role", UserRole.STUDENT)),
-            full_name=user_metadata.get("full_name", ""),
-            phone=user_metadata.get("phone"),
-            birth_date=user_metadata.get("birth_date"),
-            created_at=user_metadata.get("created_at"),
-            teacher_code=user_metadata.get("teacher_code"),
-            student_code=user_metadata.get("student_code"),
-            major_id=user_metadata.get("major_id"),
-            cohort_id=user_metadata.get("cohort_id")
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update user: {str(e)}"
-        )
-
-
-@router.delete("/users/{user_id}", response_model=UserDeleteResponse)
-async def delete_user(
-    user_id: uuid.UUID,
-    admin_user: Dict[str, Any] = Depends(get_admin_user)
-):
-    """Delete a user and their auth account."""
-    try:
-        supabase_service = SupabaseService()
-        
-        # Get user info before deletion
-        user_data = await supabase_service.get_user_by_id(str(user_id))
-        if not user_data:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        
-        user_role = user_data.get("user_metadata", {}).get("role", UserRole.STUDENT)
-        
-        # Delete from Supabase Auth
-        await supabase_service.admin_delete_user(str(user_id))
-        
-        # TODO: Delete corresponding record from teacher/student table
-        # This would be done through your repository layer
-        
-        return UserDeleteResponse(
-            message="User deleted successfully",
-            deleted_auth_id=user_id,
-            deleted_role=UserRole(user_role)
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to delete user: {str(e)}"
-        )
-
-
-@router.post("/users/bulk", response_model=BulkOperationResponse)
-async def bulk_user_operation(
-    operation_data: BulkUserOperation,
-    admin_user: Dict[str, Any] = Depends(get_admin_user)
-):
-    """Perform bulk operations on multiple users."""
-    try:
-        supabase_service = SupabaseService()
-        
-        successful = 0
-        failed = 0
-        errors = []
-        successful_ids = []
-        
-        for user_id in operation_data.user_ids:
-            try:
-                if operation_data.operation == "delete":
-                    await supabase_service.admin_delete_user(str(user_id))
-                    successful += 1
-                    successful_ids.append(user_id)
-                # Add more operations as needed (activate, deactivate)
-                
-            except Exception as e:
-                failed += 1
-                errors.append(f"User {user_id}: {str(e)}")
-        
-        return BulkOperationResponse(
-            operation=operation_data.operation,
-            total_requested=len(operation_data.user_ids),
-            successful=successful,
-            failed=failed,
-            errors=errors,
-            successful_ids=successful_ids
-        )
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Bulk operation failed: {str(e)}"
-        )
 
 
 @router.get("/stats")
