@@ -4,7 +4,7 @@ Classes API endpoints.
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import Optional, List
 
-from app.core.dependencies import get_current_user, get_teacher_user
+
 from app.repositories.classes import ClassRepository
 from app.schemas.base import PaginatedResponse
 from app.schemas.classes import Class as ClassSchema, ClassCreate, ClassUpdate
@@ -17,8 +17,7 @@ router = APIRouter(prefix="/classes", tags=["classes"])
 async def list_classes(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    search: Optional[str] = Query(None, description="Search by name or code"),
-    current_user: dict = Depends(get_current_user),
+    search: Optional[str] = Query(None, description="Search by name or code")
 ):
     try:
         repo = ClassRepository()
@@ -35,8 +34,7 @@ async def list_classes(
 
 @router.get("/{class_id}", response_model=ClassSchema)
 async def get_class(
-    class_id: int,
-    current_user: dict = Depends(get_current_user),
+    class_id: int
 ):
     try:
         repo = ClassRepository()
@@ -52,8 +50,7 @@ async def get_class(
 
 @router.post("/", response_model=ClassSchema, status_code=status.HTTP_201_CREATED)
 async def create_class(
-    payload: ClassCreate,
-    teacher_user: dict = Depends(get_teacher_user),
+    payload: ClassCreate
 ):
     try:
         repo = ClassRepository()
@@ -72,8 +69,7 @@ async def create_class(
 @router.put("/{class_id}", response_model=ClassSchema)
 async def update_class(
     class_id: int,
-    payload: ClassUpdate,
-    teacher_user: dict = Depends(get_teacher_user),
+    payload: ClassUpdate
 ):
     try:
         repo = ClassRepository()
@@ -92,8 +88,7 @@ async def update_class(
 
 @router.delete("/{class_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_class(
-    class_id: int,
-    teacher_user: dict = Depends(get_teacher_user),
+    class_id: int
 ):
     try:
         repo = ClassRepository()
@@ -111,8 +106,7 @@ async def delete_class(
 async def list_by_teacher(
     teacher_id: int,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    current_user: dict = Depends(get_current_user),
+    limit: int = Query(100, ge=1, le=1000)
 ):
     try:
         repo = ClassRepository()

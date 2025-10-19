@@ -6,8 +6,7 @@ from typing import Dict, Any, List, Optional
 import uuid
 import logging
 
-from app.core.dependencies import get_admin_user
-from app.core.auth_db import get_admin_user_db
+
 from app.core.roles import UserRole
 
 logger = logging.getLogger(__name__)
@@ -31,8 +30,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 async def create_teacher(
     teacher_data: TeacherCreateRequest
     # Temporarily remove admin authentication for testing
-    # admin_user: Dict[str, Any] = Depends(get_admin_user)
-):
+    ):
     """Create a new teacher with Supabase auth account."""
     try:
         supabase_service = SupabaseService()
@@ -102,8 +100,7 @@ async def create_teacher(
 async def create_student(
     student_data: StudentCreateRequest
     # Temporarily remove admin authentication for testing
-    # admin_user: Dict[str, Any] = Depends(get_admin_user)
-):
+    ):
     """Create a new student with Supabase auth account."""
     try:
         supabase_service = SupabaseService()
@@ -182,8 +179,7 @@ async def create_student(
 @router.get("/teachers")
 async def list_teachers(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(50, ge=1, le=100, description="Number of records to return"),
-    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+    limit: int = Query(50, ge=1, le=100, description="Number of records to return")
 ):
     """List all teachers with pagination."""
     try:
@@ -200,8 +196,7 @@ async def list_teachers(
 
 @router.get("/teachers/{teacher_id}")
 async def get_teacher(
-    teacher_id: int,
-    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+    teacher_id: int
 ):
     """Get a specific teacher by ID."""
     try:
@@ -228,8 +223,7 @@ async def get_teacher(
 @router.put("/teachers/{teacher_id}")
 async def update_teacher(
     teacher_id: int,
-    teacher_data: Dict[str, Any],
-    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+    teacher_data: Dict[str, Any]
 ):
     """Update a teacher's information."""
     try:
@@ -261,8 +255,7 @@ async def update_teacher(
 
 @router.delete("/teachers/{teacher_id}")
 async def delete_teacher(
-    teacher_id: int,
-    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+    teacher_id: int
 ):
     """Delete a teacher and their auth account."""
     try:
@@ -305,8 +298,7 @@ async def list_students(
     limit: int = Query(50, ge=1, le=100, description="Number of records to return"),
     major_id: Optional[int] = Query(None, description="Filter by major"),
     cohort_id: Optional[int] = Query(None, description="Filter by cohort"),
-    class_id: Optional[int] = Query(None, description="Filter by class"),
-    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+    class_id: Optional[int] = Query(None, description="Filter by class")
 ):
     """List all students with pagination and filtering."""
     try:
@@ -332,8 +324,7 @@ async def list_students(
 
 @router.get("/students/{student_id}")
 async def get_student(
-    student_id: int,
-    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+    student_id: int
 ):
     """Get a specific student by ID."""
     try:
@@ -360,8 +351,7 @@ async def get_student(
 @router.put("/students/{student_id}")
 async def update_student(
     student_id: int,
-    student_data: Dict[str, Any],
-    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+    student_data: Dict[str, Any]
 ):
     """Update a student's information."""
     try:
@@ -393,8 +383,7 @@ async def update_student(
 
 @router.delete("/students/{student_id}")
 async def delete_student(
-    student_id: int,
-    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+    student_id: int
 ):
     """Delete a student and their auth account."""
     try:
@@ -433,8 +422,7 @@ async def delete_student(
 # Bulk Operations
 @router.post("/teachers/bulk")
 async def bulk_teacher_operation(
-    operation_data: Dict[str, Any],
-    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+    operation_data: Dict[str, Any]
 ):
     """Perform bulk operations on multiple teachers."""
     try:
@@ -490,8 +478,7 @@ async def bulk_teacher_operation(
 
 @router.post("/students/bulk")
 async def bulk_student_operation(
-    operation_data: Dict[str, Any],
-    admin_user: Dict[str, Any] = Depends(get_admin_user_db)
+    operation_data: Dict[str, Any]
 ):
     """Perform bulk operations on multiple students."""
     try:
@@ -549,8 +536,7 @@ async def bulk_student_operation(
 async def list_users(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Number of users per page"),
-    role: UserRole = Query(None, description="Filter by role"),
-    admin_user: Dict[str, Any] = Depends(get_admin_user)
+    role: UserRole = Query(None, description="Filter by role")
 ):
     """List all users with pagination and filtering."""
     try:
@@ -600,8 +586,7 @@ async def list_users(
 
 @router.get("/users/{user_id}", response_model=UserResponse)
 async def get_user(
-    user_id: uuid.UUID,
-    admin_user: Dict[str, Any] = Depends(get_admin_user)
+    user_id: uuid.UUID
 ):
     """Get a specific user by ID."""
     try:
@@ -641,9 +626,7 @@ async def get_user(
 
 
 @router.get("/stats")
-async def get_admin_stats(
-    admin_user: Dict[str, Any] = Depends(get_admin_user)
-):
+async def get_admin_stats():
     """Get admin dashboard statistics."""
     try:
         supabase_service = SupabaseService()

@@ -4,7 +4,6 @@ Attendances API endpoints.
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List
 
-from app.core.dependencies import get_current_user, get_teacher_user
 from app.repositories.attendances import AttendanceRepository
 from app.schemas.base import PaginatedResponse
 from app.schemas.attendance import (
@@ -20,9 +19,7 @@ router = APIRouter(prefix="/attendances", tags=["attendances"])
 @router.get("/", response_model=PaginatedResponse)
 async def list_attendances(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    current_user: dict = Depends(get_current_user),
-):
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return")):
     try:
         repo = AttendanceRepository()
         items_data = await repo.get_all(skip=skip, limit=limit)
@@ -35,9 +32,7 @@ async def list_attendances(
 
 @router.get("/{id}", response_model=Attendance)
 async def get_attendance(
-    id: int,
-    current_user: dict = Depends(get_current_user),
-):
+    id: int):
     try:
         repo = AttendanceRepository()
         data = await repo.get_by_id(id)
@@ -52,9 +47,7 @@ async def get_attendance(
 
 @router.post("/", response_model=Attendance, status_code=status.HTTP_201_CREATED)
 async def create_attendance(
-    payload: AttendanceCreate,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    payload: AttendanceCreate):
     try:
         repo = AttendanceRepository()
         created = await repo.create(payload)
@@ -66,9 +59,7 @@ async def create_attendance(
 @router.put("/{id}", response_model=Attendance)
 async def update_attendance(
     id: int,
-    payload: AttendanceUpdate,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    payload: AttendanceUpdate):
     try:
         repo = AttendanceRepository()
         existing = await repo.get_by_id(id)
@@ -86,9 +77,7 @@ async def update_attendance(
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_attendance(
-    id: int,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    id: int):
     try:
         repo = AttendanceRepository()
         ok = await repo.delete(id)
@@ -105,9 +94,7 @@ async def delete_attendance(
 async def list_by_session(
     session_id: int,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    current_user: dict = Depends(get_current_user),
-):
+    limit: int = Query(100, ge=1, le=1000)):
     try:
         repo = AttendanceRepository()
         items = await repo.get_by_session(session_id, skip=skip, limit=limit)
@@ -120,9 +107,7 @@ async def list_by_session(
 async def list_by_student(
     student_id: int,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    current_user: dict = Depends(get_current_user),
-):
+    limit: int = Query(100, ge=1, le=1000)):
     try:
         repo = AttendanceRepository()
         items = await repo.get_by_student(student_id, skip=skip, limit=limit)

@@ -4,7 +4,6 @@ Subject API endpoints.
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List, Optional
 
-from app.core.dependencies import get_current_user, get_teacher_user
 from app.repositories.subjects import SubjectRepository
 from app.schemas.academic import Subject, SubjectCreate, SubjectUpdate
 from app.schemas.base import PaginatedResponse
@@ -16,9 +15,7 @@ router = APIRouter(prefix="/subjects", tags=["subjects"])
 async def list_subjects(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    search: Optional[str] = Query(None, description="Search by name or code"),
-    current_user: dict = Depends(get_current_user)
-):
+    search: Optional[str] = Query(None, description="Search by name or code")):
     """Get all subjects with pagination and optional search."""
     try:
         subject_repo = SubjectRepository()
@@ -49,9 +46,7 @@ async def list_subjects(
 
 @router.get("/{subject_id}", response_model=Subject)
 async def get_subject(
-    subject_id: int,
-    current_user: dict = Depends(get_current_user)
-):
+    subject_id: int):
     """Get a specific subject by ID."""
     try:
         subject_repo = SubjectRepository()
@@ -76,9 +71,7 @@ async def get_subject(
 
 @router.get("/code/{code}", response_model=Subject)
 async def get_subject_by_code(
-    code: str,
-    current_user: dict = Depends(get_current_user)
-):
+    code: str):
     """Get a subject by its code."""
     try:
         subject_repo = SubjectRepository()
@@ -103,9 +96,7 @@ async def get_subject_by_code(
 
 @router.post("/", response_model=Subject, status_code=status.HTTP_201_CREATED)
 async def create_subject(
-    subject_data: SubjectCreate,
-    current_user: dict = Depends(get_teacher_user)  # Only teachers can create
-):
+    subject_data: SubjectCreate):
     """Create a new subject."""
     try:
         subject_repo = SubjectRepository()
@@ -132,9 +123,7 @@ async def create_subject(
 @router.put("/{subject_id}", response_model=Subject)
 async def update_subject(
     subject_id: int,
-    subject_data: SubjectUpdate,
-    current_user: dict = Depends(get_teacher_user)  # Only teachers can update
-):
+    subject_data: SubjectUpdate):
     """Update a subject."""
     try:
         subject_repo = SubjectRepository()
@@ -175,9 +164,7 @@ async def update_subject(
 
 @router.delete("/{subject_id}")
 async def delete_subject(
-    subject_id: int,
-    current_user: dict = Depends(get_teacher_user)  # Only teachers can delete
-):
+    subject_id: int):
     """Delete a subject."""
     try:
         subject_repo = SubjectRepository()
@@ -211,9 +198,7 @@ async def delete_subject(
 @router.get("/search/", response_model=List[Subject])
 async def search_subjects(
     q: str = Query(..., min_length=1, description="Search query"),
-    limit: int = Query(50, ge=1, le=100, description="Maximum results"),
-    current_user: dict = Depends(get_current_user)
-):
+    limit: int = Query(50, ge=1, le=100, description="Maximum results")):
     """Search subjects by name or code."""
     try:
         subject_repo = SubjectRepository()

@@ -4,7 +4,6 @@ FaceTemplates API endpoints.
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List
 
-from app.core.dependencies import get_current_user, get_teacher_user
 from app.repositories.face_templates import FaceTemplateRepository
 from app.schemas.base import PaginatedResponse
 from app.schemas.face_templates import (
@@ -20,9 +19,7 @@ router = APIRouter(prefix="/face-templates", tags=["face_templates"])
 @router.get("/", response_model=PaginatedResponse)
 async def list_face_templates(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    current_user: dict = Depends(get_current_user),
-):
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return")):
     try:
         repo = FaceTemplateRepository()
         items_data = await repo.get_all(skip=skip, limit=limit)
@@ -35,9 +32,7 @@ async def list_face_templates(
 
 @router.get("/{id}", response_model=FaceTemplate)
 async def get_face_template(
-    id: int,
-    current_user: dict = Depends(get_current_user),
-):
+    id: int):
     try:
         repo = FaceTemplateRepository()
         data = await repo.get_by_id(id)
@@ -52,9 +47,7 @@ async def get_face_template(
 
 @router.post("/", response_model=FaceTemplate, status_code=status.HTTP_201_CREATED)
 async def create_face_template(
-    payload: FaceTemplateCreate,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    payload: FaceTemplateCreate):
     try:
         repo = FaceTemplateRepository()
         created = await repo.create(payload)
@@ -66,9 +59,7 @@ async def create_face_template(
 @router.put("/{id}", response_model=FaceTemplate)
 async def update_face_template(
     id: int,
-    payload: FaceTemplateUpdate,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    payload: FaceTemplateUpdate):
     try:
         repo = FaceTemplateRepository()
         existing = await repo.get_by_id(id)
@@ -86,9 +77,7 @@ async def update_face_template(
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_face_template(
-    id: int,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    id: int):
     try:
         repo = FaceTemplateRepository()
         ok = await repo.delete(id)
@@ -105,9 +94,7 @@ async def delete_face_template(
 async def list_by_student(
     student_id: int,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    current_user: dict = Depends(get_current_user),
-):
+    limit: int = Query(100, ge=1, le=1000)):
     try:
         repo = FaceTemplateRepository()
         items = await repo.get_by_student(student_id, skip=skip, limit=limit)

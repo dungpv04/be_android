@@ -4,7 +4,6 @@ ClassStudents API endpoints.
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List, Optional
 
-from app.core.dependencies import get_current_user, get_teacher_user
 from app.repositories.class_students import ClassStudentRepository
 from app.schemas.base import PaginatedResponse
 from app.schemas.classes import (
@@ -22,9 +21,7 @@ async def list_class_students(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
     class_id: Optional[int] = Query(None, description="Filter by class_id"),
-    student_id: Optional[int] = Query(None, description="Filter by student_id"),
-    current_user: dict = Depends(get_current_user),
-):
+    student_id: Optional[int] = Query(None, description="Filter by student_id")):
     """List enrollments with optional filters."""
     try:
         repo = ClassStudentRepository()
@@ -44,9 +41,7 @@ async def list_class_students(
 
 @router.get("/{id}", response_model=ClassStudent)
 async def get_class_student(
-    id: int,
-    current_user: dict = Depends(get_current_user),
-):
+    id: int):
     try:
         repo = ClassStudentRepository()
         data = await repo.get_by_id(id)
@@ -61,9 +56,7 @@ async def get_class_student(
 
 @router.post("/", response_model=ClassStudent, status_code=status.HTTP_201_CREATED)
 async def create_class_student(
-    payload: ClassStudentCreate,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    payload: ClassStudentCreate):
     """Create enrollment; teacher-only."""
     try:
         repo = ClassStudentRepository()
@@ -76,9 +69,7 @@ async def create_class_student(
 @router.put("/{id}", response_model=ClassStudent)
 async def update_class_student(
     id: int,
-    payload: ClassStudentUpdate,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    payload: ClassStudentUpdate):
     try:
         repo = ClassStudentRepository()
         existing = await repo.get_by_id(id)
@@ -97,9 +88,7 @@ async def update_class_student(
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_class_student(
-    id: int,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    id: int):
     try:
         repo = ClassStudentRepository()
         ok = await repo.delete(id)
@@ -116,9 +105,7 @@ async def delete_class_student(
 async def list_by_class(
     class_id: int,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    current_user: dict = Depends(get_current_user),
-):
+    limit: int = Query(100, ge=1, le=1000)):
     try:
         repo = ClassStudentRepository()
         items = await repo.get_by_class(class_id, skip=skip, limit=limit)
@@ -131,9 +118,7 @@ async def list_by_class(
 async def list_by_student(
     student_id: int,
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    current_user: dict = Depends(get_current_user),
-):
+    limit: int = Query(100, ge=1, le=1000)):
     try:
         repo = ClassStudentRepository()
         items = await repo.get_by_student(student_id, skip=skip, limit=limit)

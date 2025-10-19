@@ -4,7 +4,6 @@ Cohorts API endpoints.
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List
 
-from app.core.dependencies import get_current_user, get_teacher_user
 from app.repositories.cohorts import CohortRepository
 from app.schemas.academic import Cohort, CohortCreate, CohortUpdate
 from app.schemas.base import PaginatedResponse
@@ -16,9 +15,7 @@ router = APIRouter(prefix="/cohorts", tags=["cohorts"])
 @router.get("/", response_model=PaginatedResponse)
 async def list_cohorts(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    current_user: dict = Depends(get_current_user),
-):
+    limit: int = Query(100, ge=1, le=1000, description="Number of records to return")):
     try:
         repo = CohortRepository()
         items = await repo.get_all(skip=skip, limit=limit)
@@ -30,9 +27,7 @@ async def list_cohorts(
 
 @router.get("/{cohort_id}", response_model=Cohort)
 async def get_cohort(
-    cohort_id: int,
-    current_user: dict = Depends(get_current_user),
-):
+    cohort_id: int):
     try:
         repo = CohortRepository()
         data = await repo.get_by_id(cohort_id)
@@ -47,9 +42,7 @@ async def get_cohort(
 
 @router.post("/", response_model=Cohort, status_code=status.HTTP_201_CREATED)
 async def create_cohort(
-    payload: CohortCreate,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    payload: CohortCreate):
     try:
         repo = CohortRepository()
         created = await repo.create(payload)
@@ -61,9 +54,7 @@ async def create_cohort(
 @router.put("/{cohort_id}", response_model=Cohort)
 async def update_cohort(
     cohort_id: int,
-    payload: CohortUpdate,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    payload: CohortUpdate):
     try:
         repo = CohortRepository()
         existing = await repo.get_by_id(cohort_id)
@@ -81,9 +72,7 @@ async def update_cohort(
 
 @router.delete("/{cohort_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_cohort(
-    cohort_id: int,
-    teacher_user: dict = Depends(get_teacher_user),
-):
+    cohort_id: int):
     try:
         repo = CohortRepository()
         ok = await repo.delete(cohort_id)

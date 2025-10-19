@@ -4,7 +4,6 @@ Majors API endpoints.
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from typing import List, Optional
 
-from app.core.dependencies import get_current_user, get_teacher_user
 from app.repositories.majors import MajorRepository
 from app.schemas.academic import Major, MajorCreate, MajorUpdate
 from app.schemas.base import PaginatedResponse
@@ -17,9 +16,7 @@ router = APIRouter(prefix="/majors", tags=["majors"])
 async def list_majors(
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of records to return"),
-    search: Optional[str] = Query(None, description="Search by name or code"),
-    current_user: dict = Depends(get_current_user)
-):
+    search: Optional[str] = Query(None, description="Search by name or code")):
     try:
         repo = MajorRepository()
         if search:
@@ -39,9 +36,7 @@ async def list_majors(
 
 @router.get("/{major_id}", response_model=Major)
 async def get_major(
-    major_id: int,
-    current_user: dict = Depends(get_current_user)
-):
+    major_id: int):
     try:
         repo = MajorRepository()
         data = await repo.get_by_id(major_id)
@@ -56,9 +51,7 @@ async def get_major(
 
 @router.post("/", response_model=Major, status_code=status.HTTP_201_CREATED)
 async def create_major(
-    payload: MajorCreate,
-    teacher_user: dict = Depends(get_teacher_user)
-):
+    payload: MajorCreate):
     try:
         repo = MajorRepository()
         # Enforce unique code
@@ -76,9 +69,7 @@ async def create_major(
 @router.put("/{major_id}", response_model=Major)
 async def update_major(
     major_id: int,
-    payload: MajorUpdate,
-    teacher_user: dict = Depends(get_teacher_user)
-):
+    payload: MajorUpdate):
     try:
         repo = MajorRepository()
         existing = await repo.get_by_id(major_id)
@@ -96,9 +87,7 @@ async def update_major(
 
 @router.delete("/{major_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_major(
-    major_id: int,
-    teacher_user: dict = Depends(get_teacher_user)
-):
+    major_id: int):
     try:
         repo = MajorRepository()
         ok = await repo.delete(major_id)

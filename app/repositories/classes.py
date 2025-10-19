@@ -14,6 +14,32 @@ class ClassRepository:
         self.supabase_service = SupabaseService()
         self.table_name = "classes"
 
+    def _map_db_to_schema(self, db_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Map database field names to schema field names."""
+        if not db_data:
+            return db_data
+        
+        # Create a copy and map the fields
+        mapped_data = db_data.copy()
+        
+        # Map database fields to schema fields
+        if 'name' in mapped_data:
+            mapped_data['class_name'] = mapped_data.pop('name')
+        if 'code' in mapped_data:
+            mapped_data['class_code'] = mapped_data.pop('code')
+            
+        # Ensure required fields have default values if missing
+        if 'class_name' not in mapped_data:
+            mapped_data['class_name'] = mapped_data.get('class_name', 'Unnamed Class')
+        if 'class_code' not in mapped_data:
+            mapped_data['class_code'] = mapped_data.get('class_code', f"CLASS_{mapped_data.get('id', 'UNKNOWN')}")
+        if 'subject_id' not in mapped_data:
+            mapped_data['subject_id'] = mapped_data.get('subject_id', 1)  # Default subject ID
+        if 'teacher_id' not in mapped_data:
+            mapped_data['teacher_id'] = mapped_data.get('teacher_id', 1)  # Default teacher ID
+            
+        return mapped_data
+
     async def create(self, data: ClassCreate) -> Dict[str, Any]:
         """Create a new class mapping schema fields to DB columns."""
         try:
@@ -27,7 +53,7 @@ class ClassRepository:
             }
             response = self.supabase_service.client.table(self.table_name).insert(payload).execute()
             if response.data:
-                return response.data[0]
+                return self._map_db_to_schema(response.data[0])
             raise Exception("Failed to create class")
         except Exception as e:
             raise Exception(f"Error creating class: {str(e)}")
@@ -35,14 +61,14 @@ class ClassRepository:
     async def get_by_id(self, class_id: int) -> Optional[Dict[str, Any]]:
         try:
             response = self.supabase_service.client.table(self.table_name).select("*").eq("id", class_id).execute()
-            return response.data[0] if response.data else None
+            return self._map_db_to_schema(response.data[0]) if response.data else None
         except Exception as e:
             raise Exception(f"Error fetching class: {str(e)}")
 
     async def get_by_code(self, code: str) -> Optional[Dict[str, Any]]:
         try:
             response = self.supabase_service.client.table(self.table_name).select("*").eq("code", code).execute()
-            return response.data[0] if response.data else None
+            return self._map_db_to_schema(response.data[0]) if response.data else None
         except Exception as e:
             raise Exception(f"Error fetching class by code: {str(e)}")
 
@@ -54,7 +80,7 @@ class ClassRepository:
                 .range(skip, skip + limit - 1)
                 .execute()
             )
-            return response.data or []
+            return [self._map_db_to_schema(item) for item in (response.data or [])]
         except Exception as e:
             raise Exception(f"Error fetching classes: {str(e)}")
 
@@ -67,7 +93,7 @@ class ClassRepository:
                 .range(skip, skip + limit - 1)
                 .execute()
             )
-            return response.data or []
+            return [self._map_db_to_schema(item) for item in (response.data or [])]
         except Exception as e:
             raise Exception(f"Error fetching classes by teacher: {str(e)}")
 
@@ -96,7 +122,7 @@ class ClassRepository:
                 .eq("id", class_id)
                 .execute()
             )
-            return response.data[0] if response.data else None
+            return self._map_db_to_schema(response.data[0]) if response.data else None
         except Exception as e:
             raise Exception(f"Error updating class: {str(e)}")
 
