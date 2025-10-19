@@ -1,7 +1,7 @@
 """
 Authentication API endpoints for Supabase.
 """
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Header
 from fastapi.security import HTTPBearer
 from typing import Dict, Any, Optional
 
@@ -151,6 +151,80 @@ async def logout():
 
 
 @router.get("/me")
-async def get_current_user():
-    """Get current user info (placeholder)."""
-    return {"message": "User info endpoint - requires authentication"}
+async def get_current_user_info(
+    authorization: str = Header(..., description="Bearer token")
+):
+    """Get current user information based on JWT token."""
+    try:
+        # Extract token from Bearer header
+        if not authorization.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authorization header format"
+            )
+        
+        token = authorization.split(" ")[1]
+        
+        # Decode JWT token
+        security_manager = SecurityManager()
+        payload = security_manager.verify_token(token)
+        
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token"
+            )
+        
+        user_type = payload.get("user_role")
+        auth_id = payload.get("auth_id")
+        user_profile_id = payload.get("user_profile_id")
+        
+        if not user_type or not auth_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload"
+            )
+        
+        # Get user information based on user_type
+        user_info = None
+        
+        if user_type == "admin":
+            admin_repo = AdminRepository()
+            user_info = await admin_repo.get_by_auth_id(auth_id)
+            if user_info:
+                user_info["user_type"] = "admin"
+                
+        elif user_type == "teacher":
+            teacher_repo = TeacherRepository()
+            user_info = await teacher_repo.get_by_auth_id(auth_id)
+            if user_info:
+                user_info["user_type"] = "teacher"
+                
+        elif user_type == "student":
+            student_repo = StudentRepository()
+            user_info = await student_repo.get_by_auth_id(auth_id)
+            if user_info:
+                user_info["user_type"] = "student"
+        
+        if not user_info:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User profile not found"
+            )
+        
+        # Add auth information to response
+        user_info["auth_id"] = auth_id
+        user_info["email"] = payload.get("email")
+        
+        return {
+            "message": "User information retrieved successfully",
+            "user": user_info
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get user information: {str(e)}"
+        )
