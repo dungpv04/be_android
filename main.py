@@ -1,73 +1,91 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
+from contextlib import asynccontextmanager
+import uvicorn
 
-# Import API routers
-from app.api.endpoints import auth, health, admin
-from app.api.endpoints.subjects import router as subjects_router
-from app.api.endpoints.class_students import router as class_students_router
-from app.api.endpoints.face_templates import router as face_templates_router
-from app.api.endpoints.teaching_sessions import router as teaching_sessions_router
-from app.api.endpoints.majors import router as majors_router
-from app.api.endpoints.cohorts import router as cohorts_router
-from app.api.endpoints.classes import router as classes_router
-from app.api.endpoints.attendances import router as attendances_router
+from app.core.config import settings
+from app.api import v1_router
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager."""
+    print(f"Starting {settings.app_name} v{settings.app_version}")
+    print(f"Environment: {'Development' if settings.debug else 'Production'}")
+    yield
+    print("Shutting down application")
+
+
+# Create FastAPI application
 app = FastAPI(
-    title="Attendance Management System API",
-    description="A comprehensive API for managing student attendance with Supabase and face recognition",
-    version="2.0.0"
-)
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    title=settings.app_name,
+    version=settings.app_version,
+    description="Student Attendance Management System Backend API",
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
+    lifespan=lifespan
 )
 
 # Include API routers
-app.include_router(auth.router)
-app.include_router(health.router)
-app.include_router(admin.router)
-app.include_router(subjects_router)  # Add this line
-app.include_router(class_students_router)
-app.include_router(face_templates_router)
-app.include_router(teaching_sessions_router)
-app.include_router(majors_router)
-app.include_router(cohorts_router)
-app.include_router(classes_router)
-app.include_router(attendances_router)
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize application on startup."""
-    try:
-        # Check Supabase connectivity instead of creating database tables
-        from app.services.supabase import SupabaseService
-        supabase_service = SupabaseService()
-        if supabase_service.is_configured():
-            print("✅ Supabase service configured successfully")
-        else:
-            print("⚠️  Supabase service not configured")
-    except Exception as e:
-        print(f"⚠️  Application startup warning: {e}")
-        print("📝 App will start without full connectivity")
+app.include_router(v1_router, prefix="/api")
 
 
 @app.get("/")
-def read_root():
+async def root():
+    """Root endpoint."""
     return {
-        "message": "Welcome to Attendance Management System API",
-        "version": "2.0.0",
-        "status": "Running with Supabase",
-        "docs": "/docs",
-        "redoc": "/redoc"
+        "message": f"Welcome to {settings.app_name}",
+        "version": settings.app_version,
+        "status": "running"
     }
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "service": settings.app_name,
+        "version": settings.app_version
+    }
+
+
+# Global exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    """Global exception handler."""
+    if settings.debug:
+        # In development, return detailed error information
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "message": "Internal server error",
+                "detail": str(exc),
+                "type": type(exc).__name__
+            }
+        )
+    else:
+        # In production, return generic error message
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "message": "Internal server error"
+            }
+        )
+
+
+def main():
+    """Main function to run the application."""
+    uvicorn.run(
+        "main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=settings.debug,
+        log_level="debug" if settings.debug else "info"
+    )
+
+
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    main()

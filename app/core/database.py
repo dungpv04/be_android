@@ -1,112 +1,46 @@
-"""
-Database connection and session management.
-"""
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
-from typing import Generator
-from contextlib import contextmanager
-
-from app.core.config import get_database_config
+from supabase import create_client, Client
+from app.core.config import settings
 
 
-class DatabaseManager:
-    """Manages database connections and sessions."""
+class SupabaseClient:
+    """Supabase client singleton."""
+    
+    _instance = None
+    _client = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
     
     def __init__(self):
-        self.db_config = get_database_config()
-        self._engine = None
-        self._session_factory = None
-        self._base = declarative_base()
-    
-    @property
-    def engine(self):
-        """Get or create database engine."""
-        if self._engine is None:
-            connect_args = {}
-            
-            # SQLite specific configuration
-            if self.db_config.is_sqlite():
-                connect_args = {
-                    "check_same_thread": False,
-                    "poolclass": StaticPool
-                }
-            
-            self._engine = create_engine(
-                self.db_config.database_url,
-                connect_args=connect_args,
-                echo=False  # Set to True for SQL debugging
+        if self._client is None:
+            self._client = create_client(
+                settings.supabase_url,
+                settings.supabase_key
             )
-        
-        return self._engine
     
     @property
-    def session_factory(self):
-        """Get or create session factory."""
-        if self._session_factory is None:
-            self._session_factory = sessionmaker(
-                autocommit=False,
-                autoflush=False,
-                bind=self.engine
-            )
-        
-        return self._session_factory
+    def client(self) -> Client:
+        return self._client
     
-    @property
-    def base(self):
-        """Get declarative base for models."""
-        return self._base
-    
-    def create_tables(self):
-        """Create all database tables."""
-        self._base.metadata.create_all(bind=self.engine)
-    
-    def drop_tables(self):
-        """Drop all database tables."""
-        self._base.metadata.drop_all(bind=self.engine)
-    
-    def get_session(self) -> Generator[Session, None, None]:
-        """Get database session with automatic cleanup."""
-        session = self.session_factory()
-        try:
-            yield session
-        except Exception:
-            session.rollback()
-            raise
-        finally:
-            session.close()
-    
-    @contextmanager
-    def get_transaction(self):
-        """Get database session with transaction management."""
-        session = self.session_factory()
-        try:
-            yield session
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-        finally:
-            session.close()
+    def get_service_client(self) -> Client:
+        """Get Supabase client with service key for admin operations."""
+        return create_client(
+            settings.supabase_url,
+            settings.supabase_service_key
+        )
 
 
-# Global database manager instance
-db_manager = DatabaseManager()
+# Global instance
+supabase_client = SupabaseClient()
 
-# Convenience functions
-def get_db() -> Generator[Session, None, None]:
-    """Dependency function for FastAPI endpoints."""
-    yield from db_manager.get_session()
 
-def get_base():
-    """Get the declarative base for models."""
-    return db_manager.base
+def get_supabase() -> Client:
+    """Dependency to get Supabase client."""
+    return supabase_client.client
 
-def create_tables():
-    """Create all database tables."""
-    db_manager.create_tables()
 
-def get_engine():
-    """Get database engine."""
-    return db_manager.engine
+def get_supabase_admin() -> Client:
+    """Dependency to get Supabase admin client."""
+    return supabase_client.get_service_client()

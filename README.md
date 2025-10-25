@@ -1,255 +1,204 @@
-# Attendance Management System API
+# Student Attendance Management Backend
 
-A comprehensive FastAPI application for managing student attendance with face recognition capabilities and Supabase authentication.
+A FastAPI-based backend system for managing student attendance with QR code scanning, face recognition support, and Supabase authentication.
 
 ## Features
 
-- **Authentication**: Supabase-based authentication for students and teachers
-- **User Management**: CRUD operations for students and teachers
-- **Academic Structure**: Management of majors, subjects, cohorts, and classes
-- **Session Management**: Teaching sessions with QR code support
-- **Attendance Tracking**: Real-time attendance with face recognition integration
-- **Role-based Access**: Different permissions for students and teachers
+- **User Management**: Students, Teachers, and Admin accounts with Supabase Auth
+- **Academic Structure**: Faculties, Departments, Majors, Subjects, Classes
+- **Class Management**: Teaching sessions with QR code generation
+- **Attendance Tracking**: QR code-based and manual attendance marking
+- **Face Recognition Support**: Template storage for face-based attendance (future implementation)
+- **RESTful API**: Complete CRUD operations for all entities
+- **Authentication**: JWT-based authentication with Supabase
+- **Pagination**: Built-in pagination for all list endpoints
 
-## Database Schema
+## Tech Stack
 
-The application manages the following entities:
+- **Language**: Python 3.12+
+- **Framework**: FastAPI
+- **Database**: PostgreSQL (via Supabase)
+- **Authentication**: Supabase Auth
+- **Package Manager**: UV
+- **Validation**: Pydantic v2
+- **ORM**: Supabase Client (PostgreSQL)
 
-### Core Entities
-- **Students**: Student profiles with authentication
-- **Teachers**: Teacher profiles with authentication
-- **Majors**: Academic departments/fields of study
-- **Cohorts**: Student groups by enrollment year
-- **Subjects**: Course subjects
-- **Classes**: Specific class instances linking subjects and teachers
+## Project Structure
 
-### Attendance System
-- **Teaching Sessions**: Scheduled class sessions with QR codes
-- **Attendances**: Attendance records with confidence scores
-- **Face Templates**: Face encoding data for recognition
-- **Class Students**: Enrollment relationships
+```
+app/
+├── api/                    # API routes
+│   └── v1/                # Version 1 endpoints
+│       ├── auth.py        # Authentication endpoints
+│       ├── academic.py    # Academic structure endpoints
+│       ├── users.py       # User management endpoints
+│       └── classes.py     # Class and attendance endpoints
+├── core/                  # Core application components
+│   ├── config.py          # Application settings
+│   ├── database.py        # Database connection
+│   └── auth.py            # Authentication logic
+├── models/                # Pydantic models (database entities)
+├── schemas/               # Request/Response schemas
+├── repositories/          # Data access layer
+├── services/              # Business logic layer
+└── __init__.py
+```
 
 ## Setup Instructions
 
 ### Prerequisites
-- Python 3.8+
-- PostgreSQL database
-- Supabase account
-- uv package manager ([install here](https://docs.astral.sh/uv/getting-started/installation/))
 
-## Installation
+- Python 3.12 or higher
+- UV package manager
+- Supabase account and project
+- PostgreSQL database (provided by Supabase)
 
-### Run with Docker
+### Installation
 
-```bash
-docker compose up -d --build #first time run
-docker compose up -d #After first run
-docker compose logs -f #See logs
-```
-### Run manually
-
-1. **Clone and navigate to the project:**
+1. **Clone the repository**
    ```bash
-   cd /home/dungpv04/code/be_android
+   git clone <repository-url>
+   cd be_android
    ```
 
-2. **Initialize the project with uv:**
-   ```bash
-   chmod +x setup.sh
-   ./setup.sh
-   ```
-   
-   Or manually:
+2. **Install dependencies**
    ```bash
    uv sync
    ```
 
-3. **Environment Configuration:**
+3. **Environment Configuration**
    ```bash
    cp .env.example .env
    ```
    
-   Edit `.env` with your actual values:
+   Update the `.env` file with your Supabase credentials:
    ```env
-   SUPABASE_URL=your_supabase_url
+   # Supabase Configuration
+   SUPABASE_URL=your_supabase_project_url
    SUPABASE_KEY=your_supabase_anon_key
-   SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-   SECRET_KEY=your_secret_key_here
+   SUPABASE_SERVICE_KEY=your_supabase_service_role_key
+   
+   # Database Configuration
+   DATABASE_URL=your_postgresql_connection_string
+   
+   # JWT Configuration
+   SECRET_KEY=your_super_secret_jwt_key
    ALGORITHM=HS256
    ACCESS_TOKEN_EXPIRE_MINUTES=30
-   ```
-
-4. **Database Setup:**
-   - Ensure your PostgreSQL database is running
-   - The application will automatically create tables on startup
-
-5. **Start the application:**
-   ```bash
-   ./start.sh
-   ```
    
-   Or manually:
+   # Application Configuration
+   APP_NAME=Student Attendance Management
+   DEBUG=True
+   HOST=0.0.0.0
+   PORT=8000
+   ```
+
+4. **Database Setup**
+   
+   Run the SQL schema provided in the original README against your Supabase database. You can use the Supabase SQL editor or any PostgreSQL client.
+
+5. **Run the application**
    ```bash
+   # Development mode
+   uv run python main.py
+   
+   # Or using uvicorn directly
    uv run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
    ```
 
-## API Documentation
-
-Once running, access the interactive API documentation at:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+6. **Access the API**
+   - API Documentation: http://localhost:8000/docs
+   - Alternative Docs: http://localhost:8000/redoc
+   - Health Check: http://localhost:8000/health
 
 ## API Endpoints
 
 ### Authentication
-- `POST /auth/login` - User login
-- `POST /auth/register` - User registration
-- `GET /auth/me` - Get current user info
-
-### Students
-- `GET /students/` - List all students
-- `GET /students/{id}` - Get student by ID
-- `POST /students/` - Create student (teacher only)
-- `PUT /students/{id}` - Update student
-- `DELETE /students/{id}` - Delete student (teacher only)
-- `GET /students/class/{class_id}` - Get students by class
-
-### Teachers
-- `GET /teachers/` - List all teachers
-- `GET /teachers/{id}` - Get teacher by ID
-- `POST /teachers/` - Create teacher (teacher only)
-- `PUT /teachers/{id}` - Update teacher
-- `DELETE /teachers/{id}` - Delete teacher
-
-### Classes
-- `GET /classes/` - List all classes
-- `GET /classes/{id}` - Get class by ID
-- `POST /classes/` - Create class (teacher only)
-- `PUT /classes/{id}` - Update class (teacher only)
-- `DELETE /classes/{id}` - Delete class (teacher only)
-- `GET /classes/teacher/{teacher_id}` - Get classes by teacher
-
-### Teaching Sessions
-- `GET /sessions/` - List all sessions
-- `GET /sessions/{id}` - Get session by ID
-- `POST /sessions/` - Create session (teacher only)
-- `PUT /sessions/{id}` - Update session (teacher only)
-- `DELETE /sessions/{id}` - Delete session (teacher only)
-- `GET /sessions/class/{class_id}` - Get sessions by class
-
-### Attendance
-- `GET /attendances/` - List all attendances (teacher only)
-- `GET /attendances/{id}` - Get attendance by ID
-- `POST /attendances/` - Create attendance
-- `PUT /attendances/{id}` - Update attendance (teacher only)
-- `DELETE /attendances/{id}` - Delete attendance (teacher only)
-- `GET /attendances/session/{session_id}` - Get attendances by session
-- `GET /attendances/student/{student_id}` - Get attendances by student
+- `POST /api/v1/auth/login` - User login
+- `POST /api/v1/auth/register` - User registration
+- `GET /api/v1/auth/me` - Get current user info
 
 ### Academic Structure
-- `GET /majors/` - List all majors
-- `GET /subjects/` - List all subjects
-- Plus full CRUD operations for both (teacher only for create/update/delete)
+- `GET/POST /api/v1/academic/faculties` - Faculty management
+- `GET/POST /api/v1/academic/departments` - Department management
+- `GET/POST /api/v1/academic/majors` - Major management
+- `GET/POST /api/v1/academic/subjects` - Subject management
+- `GET /api/v1/academic/academic-years/current` - Current academic year
+
+### User Management
+- `GET/POST /api/v1/users/students` - Student management
+- `GET/POST /api/v1/users/teachers` - Teacher management
+- `GET /api/v1/users/students/{id}` - Get student by ID
+- `GET /api/v1/users/students/code/{code}` - Get student by code
+
+### Classes & Attendance
+- `GET/POST /api/v1/classes` - Class management
+- `POST /api/v1/classes/{id}/sessions` - Create teaching session
+- `POST /api/v1/classes/sessions/{id}/qr-code` - Generate QR code
+- `POST /api/v1/classes/sessions/{id}/attendance` - Mark attendance
+- `POST /api/v1/classes/sessions/{id}/attendance/qr` - Mark attendance via QR
+- `GET /api/v1/classes/{id}/attendance/statistics` - Attendance statistics
+
+## Database Schema
+
+The application uses the following main entities:
+
+- **Academic Structure**: AcademicYears, Semesters, StudyPhases
+- **Organization**: Faculties, Departments, Majors, Subjects
+- **Users**: Students, Teachers, Admins
+- **Classes**: Classes, ClassStudents (enrollment)
+- **Sessions**: TeachingSessions with QR codes
+- **Attendance**: Attendance records with timestamps
+- **Face Recognition**: FaceTemplates for biometric attendance
 
 ## Authentication Flow
 
-1. **Registration**: Users register with email/password and user type (student/teacher)
-2. **Profile Creation**: Additional profile information is stored in the respective tables
-3. **Login**: Returns JWT token with user type and ID
-4. **Authorization**: Endpoints check user roles and permissions
+1. **Registration**: Users register with email/password and user type
+2. **Supabase Auth**: Account created in Supabase Auth
+3. **Profile Creation**: User profile created in respective table (students/teachers)
+4. **Login**: Returns JWT token for subsequent requests
+5. **Protected Routes**: Include Bearer token in Authorization header
 
-## Security Features
+## QR Code Attendance Flow
 
-- JWT-based authentication
-- Role-based access control
-- Supabase integration for secure user management
-- Password hashing with bcrypt
-- CORS configuration for web app integration
-
-## Database Integration
-
-- SQLAlchemy ORM for database operations
-- PostgreSQL with psycopg2 driver
-- Automatic table creation
-- Foreign key relationships maintained
-- JSON support for face encoding data
+1. **Session Creation**: Teacher creates a teaching session
+2. **QR Generation**: Generate time-limited QR code for session
+3. **Student Scan**: Student scans QR code with mobile app
+4. **Validation**: System validates QR code and marks attendance
+5. **Tracking**: Attendance recorded with timestamp and metadata
 
 ## Development
 
-### Project Structure
-```
-be_android/
-├── main.py              # FastAPI application entry point
-├── config.py            # Configuration management
-├── models.py            # SQLAlchemy database models
-├── schemas.py           # Pydantic models for API
-├── crud.py              # Database CRUD operations
-├── auth.py              # Authentication and authorization
-├── utils.py             # Helper utilities
-├── routers/             # API route handlers
-│   ├── auth.py
-│   ├── students.py
-│   ├── teachers.py
-│   ├── classes.py
-│   ├── sessions.py
-│   ├── attendances.py
-│   ├── majors.py
-│   └── subjects.py
-├── pyproject.toml       # Project configuration and dependencies
-├── uv.lock              # Locked dependencies (auto-generated)
-├── .env.example         # Environment variables template
-├── setup.sh             # Project initialization script
-├── start.sh             # Startup script
-└── test_api.py          # API testing script
-```
-
-### Package Management with uv
-
+### Running Tests
 ```bash
-# Add a new dependency
-uv add package-name
-
-# Add development dependency
-uv add --dev package-name
-
-# Remove a dependency
-uv remove package-name
-
-# Update dependencies
-uv sync
-
-# Run commands in the virtual environment
-uv run python script.py
-uv run uvicorn main:app --reload
-
-# Install from lock file (production)
-uv sync --frozen
+uv run pytest
 ```
 
-### Adding New Features
+### Code Formatting
+```bash
+uv run black .
+uv run isort .
+```
 
-1. **Models**: Add new SQLAlchemy models in `models.py`
-2. **Schemas**: Define Pydantic schemas in `schemas.py`
-3. **CRUD**: Implement database operations in `crud.py`
-4. **Routes**: Create API endpoints in `routers/`
-5. **Auth**: Add authorization logic as needed
+### Linting
+```bash
+uv run flake8
+```
 
-## Production Deployment
+## Deployment
 
-For production deployment:
+1. **Set Environment Variables**: Configure production environment variables
+2. **Database Migration**: Ensure database schema is up to date
+3. **CORS Settings**: Update allowed origins for production
+4. **Security**: Use strong JWT secret keys and secure database credentials
+5. **Monitoring**: Set up logging and monitoring for production
 
-1. **Environment**: Set proper environment variables
-2. **CORS**: Configure allowed origins
-3. **Database**: Use production PostgreSQL instance
-4. **HTTPS**: Enable SSL/TLS
-5. **Monitoring**: Add logging and monitoring
-6. **Scaling**: Consider using Gunicorn or similar WSGI server
+## API Documentation
 
-## Face Recognition Integration
+Once the server is running, you can access:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
-The system includes `face_templates` table for storing face encodings. To integrate face recognition:
+## License
 
-1. **Image Upload**: Add endpoints for uploading student photos
-2. **Face Encoding**: Process images to extract face encodings
-3. **Attendance**: Match faces during attendance marking
-4. **Confidence Scoring**: Store confidence scores for accuracy tracking
+This project is licensed under the MIT License.

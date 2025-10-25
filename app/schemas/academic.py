@@ -1,132 +1,206 @@
-"""
-Academic structure schemas: majors, subjects, cohorts.
-"""
-from typing import Optional, List
-from pydantic import Field, validator
-
-from app.schemas.base import (
-    BaseSchema, 
-    CreateSchemaBase, 
-    UpdateSchemaBase, 
-    ResponseSchemaBase, 
-    TimestampSchema
-)
+from datetime import date, time, datetime
+from typing import Optional
+from pydantic import BaseModel, Field
 
 
-# Major schemas
-class MajorBase(BaseSchema):
-    """Base major schema."""
-    
-    name: str = Field(..., min_length=1, max_length=255, description="Major name")
-    code: str = Field(..., min_length=1, max_length=50, description="Unique major code")
-    
-    @validator('code')
-    def validate_code(cls, v):
-        if not v.isalnum():
-            raise ValueError('Code must be alphanumeric')
-        return v.upper()
+# Academic Year Schemas
+class AcademicYearCreate(BaseModel):
+    """Schema for creating academic year."""
+    name: str = Field(..., min_length=1, max_length=255)
+    start_date: date
+    end_date: date
 
 
-class MajorCreate(MajorBase, CreateSchemaBase):
-    """Schema for creating a major."""
-    pass
+class AcademicYearUpdate(BaseModel):
+    """Schema for updating academic year."""
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
 
-class MajorUpdate(UpdateSchemaBase):
-    """Schema for updating a major."""
-    
+class AcademicYearResponse(BaseModel):
+    """Schema for academic year response."""
+    id: int
+    name: str
+    start_date: date
+    end_date: date
+    created_at: datetime
+    updated_at: datetime
+
+
+# Faculty Schemas
+class FacultyCreate(BaseModel):
+    """Schema for creating faculty."""
+    name: str = Field(..., min_length=1, max_length=255)
+    code: str = Field(..., min_length=1, max_length=50)
+
+
+class FacultyUpdate(BaseModel):
+    """Schema for updating faculty."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     code: Optional[str] = Field(None, min_length=1, max_length=50)
-    
-    @validator('code')
-    def validate_code(cls, v):
-        if v is not None and not v.isalnum():
-            raise ValueError('Code must be alphanumeric')
-        return v.upper() if v else None
 
 
-class Major(MajorBase, ResponseSchemaBase, TimestampSchema):
-    """Major response schema."""
-    
-    students_count: Optional[int] = Field(None, description="Number of students in this major")
+class FacultyResponse(BaseModel):
+    """Schema for faculty response."""
+    id: int
+    name: str
+    code: str
+    created_at: datetime
+    updated_at: datetime
 
 
-# Subject schemas
-class SubjectBase(BaseSchema):
-    """Base subject schema."""
-    
-    name: str = Field(..., min_length=1, max_length=255, description="Subject name")
-    code: str = Field(..., min_length=1, max_length=50, description="Unique subject code")
-    
-    @validator('code')
-    def validate_code(cls, v):
-        if not v.replace('-', '').replace('_', '').isalnum():
-            raise ValueError('Code must be alphanumeric (with optional - or _)')
-        return v.upper()
+# Department Schemas
+class DepartmentCreate(BaseModel):
+    """Schema for creating department."""
+    faculty_id: int
+    name: str = Field(..., min_length=1, max_length=255)
+    code: str = Field(..., min_length=1, max_length=50)
 
 
-class SubjectCreate(SubjectBase, CreateSchemaBase):
-    """Schema for creating a subject."""
-    pass
-
-
-class SubjectUpdate(UpdateSchemaBase):
-    """Schema for updating a subject."""
-    
+class DepartmentUpdate(BaseModel):
+    """Schema for updating department."""
+    faculty_id: Optional[int] = None
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     code: Optional[str] = Field(None, min_length=1, max_length=50)
-    
-    @validator('code')
-    def validate_code(cls, v):
-        if v is not None and not v.replace('-', '').replace('_', '').isalnum():
-            raise ValueError('Code must be alphanumeric (with optional - or _)')
-        return v.upper() if v else None
 
 
-class Subject(SubjectBase, ResponseSchemaBase, TimestampSchema):
-    """Subject response schema."""
-    
-    classes_count: Optional[int] = Field(None, description="Number of classes for this subject")
+class DepartmentResponse(BaseModel):
+    """Schema for department response."""
+    id: int
+    faculty_id: Optional[int]
+    name: str
+    code: str
+    created_at: datetime
+    updated_at: datetime
 
 
-# Cohort schemas
-class CohortBase(BaseSchema):
-    """Base cohort schema."""
-    
-    name: str = Field(..., min_length=1, max_length=255, description="Cohort name")
-    start_year: int = Field(..., ge=2000, le=2100, description="Starting year")
-    
-    @validator('start_year')
-    def validate_start_year(cls, v):
-        from datetime import datetime
-        current_year = datetime.now().year
-        if v > current_year + 5:
-            raise ValueError('Start year cannot be more than 5 years in the future')
-        return v
+# Major Schemas
+class MajorCreate(BaseModel):
+    """Schema for creating major."""
+    faculty_id: int
+    name: str = Field(..., min_length=1, max_length=255)
+    code: str = Field(..., min_length=1, max_length=50)
 
 
-class CohortCreate(CohortBase, CreateSchemaBase):
-    """Schema for creating a cohort."""
-    pass
+class MajorUpdate(BaseModel):
+    """Schema for updating major."""
+    faculty_id: Optional[int] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    code: Optional[str] = Field(None, min_length=1, max_length=50)
 
 
-class CohortUpdate(UpdateSchemaBase):
-    """Schema for updating a cohort."""
-    
+class MajorResponse(BaseModel):
+    """Schema for major response."""
+    id: int
+    faculty_id: Optional[int]
+    name: str
+    code: str
+    created_at: datetime
+    updated_at: datetime
+
+
+# Cohort Schemas
+class CohortCreate(BaseModel):
+    """Schema for creating cohort."""
+    name: str = Field(..., min_length=1, max_length=255)
+    start_year: int = Field(..., ge=2000, le=2100)
+    end_year: int = Field(..., ge=2000, le=2100)
+
+
+class CohortUpdate(BaseModel):
+    """Schema for updating cohort."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     start_year: Optional[int] = Field(None, ge=2000, le=2100)
-    
-    @validator('start_year')
-    def validate_start_year(cls, v):
-        if v is not None:
-            from datetime import datetime
-            current_year = datetime.now().year
-            if v > current_year + 5:
-                raise ValueError('Start year cannot be more than 5 years in the future')
-        return v
+    end_year: Optional[int] = Field(None, ge=2000, le=2100)
 
 
-class Cohort(CohortBase, ResponseSchemaBase):
-    """Cohort response schema."""
-    
-    students_count: Optional[int] = Field(None, description="Number of students in this cohort")
+class CohortResponse(BaseModel):
+    """Schema for cohort response."""
+    id: int
+    name: str
+    start_year: int
+    end_year: int
+    created_at: datetime
+    updated_at: datetime
+
+
+# Subject Schemas
+class SubjectCreate(BaseModel):
+    """Schema for creating subject."""
+    department_id: int
+    name: str = Field(..., min_length=1, max_length=255)
+    code: str = Field(..., min_length=1, max_length=50)
+
+
+class SubjectUpdate(BaseModel):
+    """Schema for updating subject."""
+    department_id: Optional[int] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    code: Optional[str] = Field(None, min_length=1, max_length=50)
+
+
+class SubjectResponse(BaseModel):
+    """Schema for subject response."""
+    id: int
+    department_id: Optional[int]
+    name: str
+    code: str
+    created_at: datetime
+    updated_at: datetime
+
+
+# Semester Schemas
+class SemesterCreate(BaseModel):
+    """Schema for creating semester."""
+    academic_year_id: Optional[int] = None
+    name: str = Field(..., min_length=1, max_length=255)
+    start_date: date
+    end_date: date
+
+
+class SemesterUpdate(BaseModel):
+    """Schema for updating semester."""
+    academic_year_id: Optional[int] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+
+
+class SemesterResponse(BaseModel):
+    """Schema for semester response."""
+    id: int
+    academic_year_id: Optional[int]
+    name: str
+    start_date: date
+    end_date: date
+    created_at: datetime
+    updated_at: datetime
+
+
+# Study Phase Schemas
+class StudyPhaseCreate(BaseModel):
+    """Schema for creating study phase."""
+    semester_id: Optional[int] = None
+    name: str = Field(..., min_length=1, max_length=255)
+    start_date: date
+    end_date: date
+
+
+class StudyPhaseUpdate(BaseModel):
+    """Schema for updating study phase."""
+    semester_id: Optional[int] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+
+
+class StudyPhaseResponse(BaseModel):
+    """Schema for study phase response."""
+    id: int
+    semester_id: Optional[int]
+    name: str
+    start_date: date
+    end_date: date
+    created_at: datetime
+    updated_at: datetime

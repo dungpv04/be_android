@@ -1,136 +1,223 @@
-"""
-Class repository for Supabase operations.
-"""
 from typing import Optional, List, Dict, Any
+from datetime import date, datetime
+from supabase import Client
+from app.models import Class, TeachingSession, Attendance, ClassStudent
+from app.repositories.base import BaseRepository
 
-from app.services.supabase import SupabaseService
-from app.schemas.classes import ClassCreate, ClassUpdate
 
-
-class ClassRepository:
-    """Repository for classes using Supabase."""
-
-    def __init__(self):
-        self.supabase_service = SupabaseService()
-        self.table_name = "classes"
-
-    def _map_db_to_schema(self, db_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Map database field names to schema field names."""
-        if not db_data:
-            return db_data
-        
-        # Create a copy and map the fields
-        mapped_data = db_data.copy()
-        
-        # Map database fields to schema fields
-        if 'name' in mapped_data:
-            mapped_data['class_name'] = mapped_data.pop('name')
-        if 'code' in mapped_data:
-            mapped_data['class_code'] = mapped_data.pop('code')
-            
-        # Ensure required fields have default values if missing
-        if 'class_name' not in mapped_data:
-            mapped_data['class_name'] = mapped_data.get('class_name', 'Unnamed Class')
-        if 'class_code' not in mapped_data:
-            mapped_data['class_code'] = mapped_data.get('class_code', f"CLASS_{mapped_data.get('id', 'UNKNOWN')}")
-        if 'subject_id' not in mapped_data:
-            mapped_data['subject_id'] = mapped_data.get('subject_id', 1)  # Default subject ID
-        if 'teacher_id' not in mapped_data:
-            mapped_data['teacher_id'] = mapped_data.get('teacher_id', 1)  # Default teacher ID
-            
-        return mapped_data
-
-    async def create(self, data: ClassCreate) -> Dict[str, Any]:
-        """Create a new class mapping schema fields to DB columns."""
+class ClassRepository(BaseRepository[Class]):
+    """Repository for Class operations."""
+    
+    def __init__(self, supabase: Client):
+        super().__init__(supabase, "classes", Class)
+    
+    async def get_by_code(self, code: str) -> Optional[Class]:
+        """Get class by code."""
         try:
-            payload = {
-                # Map schema fields to DB columns
-                "name": data.class_name,
-                "code": data.class_code,
-                "subject_id": data.subject_id,
-                "teacher_id": data.teacher_id,
-                "status": data.status.value if hasattr(data.status, "value") else data.status,
-            }
-            response = self.supabase_service.client.table(self.table_name).insert(payload).execute()
+            response = self.supabase.table(self.table_name).select("*").eq("code", code).execute()
             if response.data:
-                return self._map_db_to_schema(response.data[0])
-            raise Exception("Failed to create class")
+                return self.model_class(**response.data[0])
+            return None
         except Exception as e:
-            raise Exception(f"Error creating class: {str(e)}")
+            print(f"Error getting class by code: {e}")
+            return None
+    
+    async def get_by_teacher(self, teacher_id: int) -> List[Class]:
+        """Get classes by teacher ID."""
+        return await self.find_by_field("teacher_id", teacher_id)
+    
+    async def get_by_subject(self, subject_id: int) -> List[Class]:
+        """Get classes by subject ID."""
+        return await self.find_by_field("subject_id", subject_id)
+    
+    async def get_active_classes(self) -> List[Class]:
+        """Get all active classes."""
+        return await self.find_by_field("status", "active")
 
-    async def get_by_id(self, class_id: int) -> Optional[Dict[str, Any]]:
+
+class TeachingSessionRepository(BaseRepository[TeachingSession]):
+    """Repository for Teaching Session operations."""
+    
+    def __init__(self, supabase: Client):
+        super().__init__(supabase, "teaching_sessions", TeachingSession)
+    
+    async def get_by_class(self, class_id: int) -> List[TeachingSession]:
+        """Get teaching sessions by class ID."""
+        return await self.find_by_field("class_id", class_id)
+    
+    async def get_by_date(self, session_date: date) -> List[TeachingSession]:
+        """Get teaching sessions by date."""
         try:
-            response = self.supabase_service.client.table(self.table_name).select("*").eq("id", class_id).execute()
-            return self._map_db_to_schema(response.data[0]) if response.data else None
+            response = (self.supabase.table(self.table_name)
+                       .select("*")
+                       .eq("session_date", session_date.isoformat())
+                       .execute())
+            
+            return [self.model_class(**item) for item in response.data] if response.data else []
         except Exception as e:
-            raise Exception(f"Error fetching class: {str(e)}")
-
-    async def get_by_code(self, code: str) -> Optional[Dict[str, Any]]:
+            print(f"Error getting teaching sessions by date: {e}")
+            return []
+    
+    async def get_by_class_and_date(self, class_id: int, session_date: date) -> List[TeachingSession]:
+        """Get teaching sessions by class and date."""
         try:
-            response = self.supabase_service.client.table(self.table_name).select("*").eq("code", code).execute()
-            return self._map_db_to_schema(response.data[0]) if response.data else None
+            response = (self.supabase.table(self.table_name)
+                       .select("*")
+                       .eq("class_id", class_id)
+                       .eq("session_date", session_date.isoformat())
+                       .execute())
+            
+            return [self.model_class(**item) for item in response.data] if response.data else []
         except Exception as e:
-            raise Exception(f"Error fetching class by code: {str(e)}")
-
-    async def get_all(self, skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
+            print(f"Error getting teaching sessions by class and date: {e}")
+            return []
+    
+    async def get_open_sessions(self) -> List[TeachingSession]:
+        """Get all open teaching sessions."""
+        return await self.find_by_field("status", "Open")
+    
+    async def update_qr_code(self, session_id: int, qr_code: str, expired_at: datetime) -> Optional[TeachingSession]:
+        """Update QR code for a session."""
         try:
-            response = (
-                self.supabase_service.client.table(self.table_name)
-                .select("*")
-                .range(skip, skip + limit - 1)
-                .execute()
-            )
-            return [self._map_db_to_schema(item) for item in (response.data or [])]
+            response = (self.supabase.table(self.table_name)
+                       .update({
+                           "qr_code": qr_code,
+                           "qr_expired_at": expired_at.isoformat()
+                       })
+                       .eq("id", session_id)
+                       .execute())
+            
+            if response.data:
+                return self.model_class(**response.data[0])
+            return None
         except Exception as e:
-            raise Exception(f"Error fetching classes: {str(e)}")
+            print(f"Error updating QR code: {e}")
+            return None
 
-    async def get_by_teacher(self, teacher_id: int, skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
+
+class AttendanceRepository(BaseRepository[Attendance]):
+    """Repository for Attendance operations."""
+    
+    def __init__(self, supabase: Client):
+        super().__init__(supabase, "attendances", Attendance)
+    
+    async def get_by_session(self, session_id: int) -> List[Attendance]:
+        """Get attendance by session ID."""
+        return await self.find_by_field("session_id", session_id)
+    
+    async def get_by_student(self, student_id: int) -> List[Attendance]:
+        """Get attendance by student ID."""
+        return await self.find_by_field("student_id", student_id)
+    
+    async def get_by_session_and_student(self, session_id: int, student_id: int) -> Optional[Attendance]:
+        """Get attendance by session and student."""
         try:
-            response = (
-                self.supabase_service.client.table(self.table_name)
-                .select("*")
-                .eq("teacher_id", teacher_id)
-                .range(skip, skip + limit - 1)
-                .execute()
-            )
-            return [self._map_db_to_schema(item) for item in (response.data or [])]
+            response = (self.supabase.table(self.table_name)
+                       .select("*")
+                       .eq("session_id", session_id)
+                       .eq("student_id", student_id)
+                       .execute())
+            
+            if response.data:
+                return self.model_class(**response.data[0])
+            return None
         except Exception as e:
-            raise Exception(f"Error fetching classes by teacher: {str(e)}")
-
-    async def update(self, class_id: int, data: ClassUpdate) -> Optional[Dict[str, Any]]:
+            print(f"Error getting attendance by session and student: {e}")
+            return None
+    
+    async def get_attendance_statistics(self, class_id: int, start_date: date, end_date: date) -> Dict[str, Any]:
+        """Get attendance statistics for a class within date range."""
         try:
-            update_data: Dict[str, Any] = {}
-            d = data.dict(exclude_unset=True)
-            if "class_name" in d and d["class_name"] is not None:
-                update_data["name"] = d["class_name"]
-            if "class_code" in d and d["class_code"] is not None:
-                update_data["code"] = d["class_code"]
-            if "subject_id" in d and d["subject_id"] is not None:
-                update_data["subject_id"] = d["subject_id"]
-            if "teacher_id" in d and d["teacher_id"] is not None:
-                update_data["teacher_id"] = d["teacher_id"]
-            if "status" in d and d["status"] is not None:
-                status_val = d["status"].value if hasattr(d["status"], "value") else d["status"]
-                update_data["status"] = status_val
-
-            if not update_data:
-                return None
-
-            response = (
-                self.supabase_service.client.table(self.table_name)
-                .update(update_data)
-                .eq("id", class_id)
-                .execute()
-            )
-            return self._map_db_to_schema(response.data[0]) if response.data else None
+            # This would require a more complex query, potentially using SQL functions
+            # For now, we'll return a basic structure
+            sessions = await self.supabase.table("teaching_sessions").select("id").eq("class_id", class_id).gte("session_date", start_date.isoformat()).lte("session_date", end_date.isoformat()).execute()
+            
+            if not sessions.data:
+                return {"total_sessions": 0, "attendance_rate": 0}
+            
+            session_ids = [s["id"] for s in sessions.data]
+            total_sessions = len(session_ids)
+            
+            # Get total attendances for these sessions
+            attendances = []
+            for session_id in session_ids:
+                session_attendances = await self.get_by_session(session_id)
+                attendances.extend(session_attendances)
+            
+            present_count = len([a for a in attendances if a.status == "present"])
+            total_possible = total_sessions * len(set(a.student_id for a in attendances)) if attendances else 0
+            
+            attendance_rate = (present_count / total_possible * 100) if total_possible > 0 else 0
+            
+            return {
+                "total_sessions": total_sessions,
+                "total_attendances": len(attendances),
+                "present_count": present_count,
+                "attendance_rate": round(attendance_rate, 2)
+            }
         except Exception as e:
-            raise Exception(f"Error updating class: {str(e)}")
+            print(f"Error getting attendance statistics: {e}")
+            return {"total_sessions": 0, "attendance_rate": 0}
 
-    async def delete(self, class_id: int) -> bool:
+
+class ClassStudentRepository(BaseRepository[ClassStudent]):
+    """Repository for Class Student operations."""
+    
+    def __init__(self, supabase: Client):
+        super().__init__(supabase, "class_students", ClassStudent)
+    
+    async def get_by_class(self, class_id: int) -> List[ClassStudent]:
+        """Get class students by class ID."""
+        return await self.find_by_field("class_id", class_id)
+    
+    async def get_by_student(self, student_id: int) -> List[ClassStudent]:
+        """Get class students by student ID."""
+        return await self.find_by_field("student_id", student_id)
+    
+    async def get_active_enrollments(self, class_id: int) -> List[ClassStudent]:
+        """Get active enrollments for a class."""
         try:
-            response = self.supabase_service.client.table(self.table_name).delete().eq("id", class_id).execute()
-            return len(response.data) > 0
+            response = (self.supabase.table(self.table_name)
+                       .select("*")
+                       .eq("class_id", class_id)
+                       .eq("status", "active")
+                       .execute())
+            
+            return [self.model_class(**item) for item in response.data] if response.data else []
         except Exception as e:
-            raise Exception(f"Error deleting class: {str(e)}")
-
-
+            print(f"Error getting active enrollments: {e}")
+            return []
+    
+    async def enroll_student(self, class_id: int, student_id: int) -> Optional[ClassStudent]:
+        """Enroll a student in a class."""
+        try:
+            # Check if already enrolled
+            existing = await self.supabase.table(self.table_name).select("*").eq("class_id", class_id).eq("student_id", student_id).execute()
+            
+            if existing.data:
+                # Update status to active if inactive
+                return await self.update(existing.data[0]["id"], {"status": "active"})
+            else:
+                # Create new enrollment
+                return await self.create({
+                    "class_id": class_id,
+                    "student_id": student_id,
+                    "status": "active"
+                })
+        except Exception as e:
+            print(f"Error enrolling student: {e}")
+            return None
+    
+    async def unenroll_student(self, class_id: int, student_id: int) -> bool:
+        """Unenroll a student from a class."""
+        try:
+            response = (self.supabase.table(self.table_name)
+                       .update({"status": "inactive"})
+                       .eq("class_id", class_id)
+                       .eq("student_id", student_id)
+                       .execute())
+            
+            return response.data is not None
+        except Exception as e:
+            print(f"Error unenrolling student: {e}")
+            return False

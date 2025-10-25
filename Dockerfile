@@ -1,32 +1,45 @@
-# Use Python 3.12 slim image
+# Use Python 3.12 slim image as base
 FROM python:3.12-slim
 
-# Set working directory
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+# Set work directory
 WORKDIR /app
 
-# Install system dependencies for psycopg2 (Supabase connection)
-RUN apt-get update && apt-get install -y \
-    gcc \
-    ca-certificates \
-    curl \
+# Install system dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        libpq-dev \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv for fast Python package management
-RUN pip install uv
+# Install UV package manager
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Copy pyproject.toml and uv.lock (if exists)
-COPY pyproject.toml ./
-COPY uv.lock* ./
+# Copy project files
+COPY pyproject.toml uv.lock* ./
 
 # Install Python dependencies
-RUN uv sync --frozen
+RUN uv sync --frozen --no-cache
 
 # Copy application code
 COPY . .
 
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash app \
+    && chown -R app:app /app
+USER app
+
 # Expose port
 EXPOSE 8000
 
-# Command to run the application
-# Command to run the application
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Run the application
 CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
