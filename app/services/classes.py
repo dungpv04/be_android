@@ -54,6 +54,21 @@ class TeachingSessionService(BaseService[TeachingSession]):
         repository = TeachingSessionRepository(supabase)
         super().__init__(repository)
     
+    async def delete(self, session_id: int) -> bool:
+        """Delete a teaching session with cascade (delete related attendance records first)."""
+        try:
+            # First, delete all attendance records for this session
+            attendance_delete_response = (self.repository.supabase.table("attendances")
+                                        .delete()
+                                        .eq("session_id", session_id)
+                                        .execute())
+            
+            # Then delete the teaching session
+            return await self.repository.delete(session_id)
+        except Exception as e:
+            print(f"Error deleting teaching session with cascade: {e}")
+            return False
+    
     async def get_by_class(self, class_id: int) -> List[TeachingSession]:
         """Get teaching sessions by class."""
         return await self.repository.get_by_class(class_id)

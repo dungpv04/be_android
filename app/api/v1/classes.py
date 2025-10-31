@@ -166,6 +166,107 @@ async def get_class_sessions(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
+@router.get("/sessions/{session_id}", response_model=TeachingSessionResponse)
+async def get_session(
+    session_id: int,
+    supabase: Client = Depends(get_supabase)
+):
+    """Get a teaching session by ID."""
+    try:
+        session_service = TeachingSessionService(supabase)
+        session = await session_service.get_by_id(session_id)
+        
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Teaching session not found"
+            )
+        
+        return TeachingSessionResponse(**session.model_dump())
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get session error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+@router.put("/sessions/{session_id}", response_model=BaseResponse)
+async def update_session(
+    session_id: int,
+    session_data: TeachingSessionUpdate,
+    supabase: Client = Depends(get_supabase)
+):
+    """Update a teaching session by ID."""
+    try:
+        session_service = TeachingSessionService(supabase)
+        
+        # Check if session exists
+        existing_session = await session_service.get_by_id(session_id)
+        if not existing_session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Teaching session not found"
+            )
+        
+        # Update session
+        updated_session = await session_service.update(session_id, session_data.model_dump())
+        
+        if not updated_session:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to update teaching session"
+            )
+        
+        return BaseResponse(
+            message="Teaching session updated successfully",
+            data={
+                "id": updated_session.id,
+                "session_date": updated_session.session_date.isoformat(),
+                "start_time": updated_session.start_time.isoformat(),
+                "end_time": updated_session.end_time.isoformat()
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Update session error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+@router.delete("/sessions/{session_id}", response_model=BaseResponse)
+async def delete_session(
+    session_id: int,
+    supabase: Client = Depends(get_supabase)
+):
+    """Delete a teaching session by ID."""
+    try:
+        session_service = TeachingSessionService(supabase)
+        
+        # Check if session exists
+        existing_session = await session_service.get_by_id(session_id)
+        if not existing_session:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Teaching session not found"
+            )
+        
+        # Delete session
+        success = await session_service.delete(session_id)
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to delete teaching session"
+            )
+        
+        return BaseResponse(message="Teaching session deleted successfully")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Delete session error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
 @router.post("/sessions/{session_id}/qr-code", response_model=BaseResponse)
 async def generate_session_qr_code(
     session_id: int,
