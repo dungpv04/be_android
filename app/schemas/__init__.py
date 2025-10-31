@@ -18,11 +18,15 @@ from .users import (
     StudentCreate, StudentUpdate, StudentResponse,
     TeacherCreate, TeacherUpdate, TeacherResponse
 )
+from .admin import (
+    AdminCreate, AdminUpdate, AdminResponse
+)
 from .classes import (
     ClassCreate, ClassUpdate, ClassResponse,
     TeachingSessionCreate, TeachingSessionUpdate, TeachingSessionResponse,
     AttendanceCreate, AttendanceUpdate, AttendanceResponse,
-    ClassStudentCreate, ClassStudentResponse
+    ClassStudentCreate, ClassStudentResponse, ClassStudentDetailResponse,
+    StudentClassDetailResponse
 )
 
 __all__ = [
@@ -44,9 +48,13 @@ __all__ = [
     "StudentCreate", "StudentUpdate", "StudentResponse",
     "TeacherCreate", "TeacherUpdate", "TeacherResponse",
     
+    # Admin schemas
+    "AdminCreate", "AdminUpdate", "AdminResponse",
+    
     # Class schemas
     "ClassCreate", "ClassUpdate", "ClassResponse",
     "TeachingSessionCreate", "TeachingSessionUpdate", "TeachingSessionResponse",
     "AttendanceCreate", "AttendanceUpdate", "AttendanceResponse",
-    "ClassStudentCreate", "ClassStudentResponse"
+    "ClassStudentCreate", "ClassStudentResponse", "ClassStudentDetailResponse",
+    "StudentClassDetailResponse"
 ]

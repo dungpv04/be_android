@@ -98,6 +98,7 @@ class Teacher(BaseModelConfig):
     full_name: str
     phone: Optional[str] = None
     birth_date: Optional[date] = None
+    hometown: Optional[str] = None
     auth_id: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -114,6 +115,15 @@ class Student(BaseModelConfig):
     full_name: str
     phone: Optional[str] = None
     birth_date: Optional[date] = None
+    hometown: Optional[str] = None
+    auth_id: str
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class Admin(BaseModelConfig):
+    """Admin model."""
+    id: Optional[int] = None
     auth_id: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

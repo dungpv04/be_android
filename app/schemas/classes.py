@@ -135,7 +135,6 @@ class AttendanceResponse(BaseModel):
 # Class Student Schemas
 class ClassStudentCreate(BaseModel):
     """Schema for enrolling student in class."""
-    class_id: int
     student_id: int
 
 
@@ -146,3 +145,56 @@ class ClassStudentResponse(BaseModel):
     student_id: int
     enrolled_at: datetime
     status: str
+
+
+class ClassStudentDetailResponse(BaseModel):
+    """Schema for detailed class student response with student info."""
+    id: int
+    class_id: int
+    student_id: int
+    enrolled_at: datetime
+    status: str
+    # Student details
+    student_name: str
+    student_code: str
+    student_email: Optional[str] = None
+    student_phone: Optional[str] = None
+    student_hometown: Optional[str] = None
+    class_name: Optional[str] = None
+
+
+class StudentClassDetailResponse(BaseModel):
+    """Schema for detailed class response for a student with enrollment info."""
+    # Class details
+    id: int
+    name: str
+    code: str
+    subject_id: int
+    teacher_id: int
+    faculty_id: int
+    department_id: int
+    major_id: int
+    cohort_id: int
+    academic_year_id: int
+    semester_id: int
+    study_phase_id: int
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    # Joined details
+    faculty_name: Optional[str] = None
+    department_name: Optional[str] = None
+    major_name: Optional[str] = None
+    subject_name: Optional[str] = None
+    subject_code: Optional[str] = None
+    teacher_name: Optional[str] = None
+    teacher_code: Optional[str] = None
+    cohort_name: Optional[str] = None
+    academic_year_name: Optional[str] = None
+    semester_name: Optional[str] = None
+    study_phase_name: Optional[str] = None
+    student_count: int
+    # Enrollment details
+    enrollment_id: int
+    enrolled_at: datetime
+    enrollment_status: str

@@ -5,7 +5,7 @@ from supabase import Client
 from app.core.database import get_supabase
 from app.core.auth import auth_service
 from app.schemas import LoginRequest, LoginResponse, RegisterRequest, BaseResponse
-from app.services import StudentService, TeacherService
+from app.services import StudentService, TeacherService, AdminService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 security = HTTPBearer()
@@ -32,21 +32,20 @@ async def login(
         user = auth_result["user"]
         session = auth_result["session"]
         
-        # Get user details based on user type
+        # Get user details - check all user types to determine the correct one
         user_details = None
-        user_type = user.user_metadata.get("user_type", "student")
         
-        if user_type == "student":
-            student_service = StudentService(supabase)
-            student = await student_service.get_by_auth_id(user.id)
-            if student:
-                user_details = {
-                    "id": student.id,
-                    "student_code": student.student_code,
-                    "full_name": student.full_name,
-                    "user_type": "student"
-                }
-        elif user_type == "teacher":
+        # Check if user is admin first
+        admin_service = AdminService(supabase)
+        admin = await admin_service.get_by_auth_id(user.id)
+        if admin:
+            user_details = {
+                "id": admin.id,
+                "email": user.email,
+                "user_type": "admin"
+            }
+        else:
+            # Check if user is teacher
             teacher_service = TeacherService(supabase)
             teacher = await teacher_service.get_by_auth_id(user.id)
             if teacher:
@@ -56,10 +55,21 @@ async def login(
                     "full_name": teacher.full_name,
                     "user_type": "teacher"
                 }
+            else:
+                # Check if user is student
+                student_service = StudentService(supabase)
+                student = await student_service.get_by_auth_id(user.id)
+                if student:
+                    user_details = {
+                        "id": student.id,
+                        "student_code": student.student_code,
+                        "full_name": student.full_name,
+                        "user_type": "student"
+                    }
         
         return LoginResponse(
             access_token=session.access_token,
-            user=user_details or {"id": user.id, "email": user.email, "user_type": user_type}
+            user=user_details or {"id": user.id, "email": user.email, "user_type": "unknown"}
         )
         
     except HTTPException:

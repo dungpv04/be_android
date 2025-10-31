@@ -7,6 +7,7 @@ from .academic import (
     SemesterService, StudyPhaseService
 )
 from .users import StudentService, TeacherService
+from .admin import AdminService
 from .classes import (
     ClassService, TeachingSessionService, AttendanceService,
     ClassStudentService
@@ -17,7 +18,7 @@ __all__ = [
     "FacultyService", "DepartmentService", "MajorService",
     "SubjectService", "AcademicYearService", "CohortService",
     "SemesterService", "StudyPhaseService",
-    "StudentService", "TeacherService",
+    "StudentService", "TeacherService", "AdminService",
     "ClassService", "TeachingSessionService", "AttendanceService",
     "ClassStudentService"
 ]

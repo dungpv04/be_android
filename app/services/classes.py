@@ -33,6 +33,10 @@ class ClassService(BaseService[Class]):
         """Get active classes."""
         return await self.repository.get_active_classes()
     
+    async def get_classes_with_details(self, page: int = 1, limit: int = 10, filters: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Get classes with joined data and student count."""
+        return await self.repository.get_classes_with_details(page, limit, filters or {})
+    
     async def create(self, data: Dict[str, Any]) -> Optional[Class]:
         """Create class with validation."""
         # Check if code is unique
@@ -188,6 +192,14 @@ class ClassStudentService(BaseService[ClassStudent]):
     async def get_active_enrollments(self, class_id: int) -> List[ClassStudent]:
         """Get active enrollments for a class."""
         return await self.repository.get_active_enrollments(class_id)
+    
+    async def get_class_students_with_details(self, class_id: int, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Get class students with detailed student information."""
+        return await self.repository.get_class_students_with_details(class_id, active_only)
+    
+    async def get_student_classes_with_details(self, student_id: int, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Get classes for a specific student with detailed information."""
+        return await self.repository.get_student_classes_with_details(student_id, active_only)
     
     async def enroll_student(self, class_id: int, student_id: int) -> Optional[ClassStudent]:
         """Enroll a student in a class."""

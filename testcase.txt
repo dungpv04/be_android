@@ -1,0 +1,40 @@
+📋 DANH SÁCH API CALLS ĐỂ ENROLL STUDENTS:
+================================================================================
+
+# Class 1 (64KTPM1-Android) - 2 students
+# Faculty=1, Major=1, Cohort=1
+
+# Student: Pham van Dung (2251172306)
+curl -X POST 'http://localhost:8000/api/v1/classes/1/students' \
+  -H 'Content-Type: application/json' \
+  -d '{"class_id": 1, "student_id": 1}'
+
+
+# Student: ddd (ddd)
+curl -X POST 'http://localhost:8000/api/v1/classes/1/students' \
+  -H 'Content-Type: application/json' \
+  -d '{"class_id": 1, "student_id": 8}'
+
+
+# Class 23 (Class 2) - 2 students
+# Faculty=18, Major=11, Cohort=11
+
+# Student: Cô Bảo Trần (2251004)
+curl -X POST 'http://localhost:8000/api/v1/classes/23/students' \
+  -H 'Content-Type: application/json' \
+  -d '{"class_id": 23, "student_id": 13}'
+
+
+# Student: Bà Chi Dương (2251006)
+curl -X POST 'http://localhost:8000/api/v1/classes/23/students' \
+  -H 'Content-Type: application/json' \
+  -d '{"class_id": 23, "student_id": 15}'
+
+
+# Class 26 (Class 5) - 1 students
+# Faculty=15, Major=9, Cohort=9
+
+# Student: Lan Vũ (2251000)
+curl -X POST 'http://localhost:8000/api/v1/classes/26/students' \
+  -H 'Content-Type: application/json' \
+  -d '{"class_id": 26, "student_id": 9}'

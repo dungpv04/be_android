@@ -10,7 +10,8 @@ from app.schemas import (
     ClassCreate, ClassUpdate, ClassResponse,
     TeachingSessionCreate, TeachingSessionUpdate, TeachingSessionResponse,
     AttendanceCreate, AttendanceUpdate, AttendanceResponse,
-    ClassStudentCreate, ClassStudentResponse,
+    ClassStudentCreate, ClassStudentResponse, ClassStudentDetailResponse,
+    StudentClassDetailResponse,
     BaseResponse, PaginatedResponse
 )
 from app.services import (
@@ -59,50 +60,33 @@ async def get_classes(
     limit: int = Query(10, ge=1, le=100),
     teacher_id: int = Query(None),
     subject_id: int = Query(None),
+    semester_id: int = Query(None),
     active_only: bool = Query(True),
     supabase: Client = Depends(get_supabase)
 ):
-    """Get all classes with pagination and optional filters."""
+    """Get all classes with pagination, joined data, and student count."""
     try:
         class_service = ClassService(supabase)
         
-        # Handle filters
+        # Build filters
+        filters = {}
         if teacher_id:
-            classes = await class_service.get_by_teacher(teacher_id)
-            return PaginatedResponse(
-                items=[cls.model_dump() for cls in classes],
-                total=len(classes),
-                page=1,
-                limit=len(classes),
-                total_pages=1
-            )
-        elif subject_id:
-            classes = await class_service.get_by_subject(subject_id)
-            return PaginatedResponse(
-                items=[cls.model_dump() for cls in classes],
-                total=len(classes),
-                page=1,
-                limit=len(classes),
-                total_pages=1
-            )
-        elif active_only:
-            classes = await class_service.get_active_classes()
-            return PaginatedResponse(
-                items=[cls.model_dump() for cls in classes],
-                total=len(classes),
-                page=1,
-                limit=len(classes),
-                total_pages=1
-            )
-        else:
-            result = await class_service.get_all(page, limit)
-            return PaginatedResponse(
-                items=[cls.model_dump() for cls in result["items"]],
-                total=result["total"],
-                page=result["page"],
-                limit=result["limit"],
-                total_pages=result["total_pages"]
-            )
+            filters["teacher_id"] = teacher_id
+        if subject_id:
+            filters["subject_id"] = subject_id
+        if semester_id:
+            filters["semester_id"] = semester_id
+        
+        # Use the enhanced method with joins and student count
+        result = await class_service.get_classes_with_details(page, limit, filters)
+        
+        return PaginatedResponse(
+            items=result["items"],
+            total=result["total"],
+            page=result["page"],
+            limit=result["limit"],
+            total_pages=result["total_pages"]
+        )
     except Exception as e:
         print(f"Get classes error: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
@@ -396,22 +380,22 @@ async def enroll_student(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
-@router.get("/{class_id}/students", response_model=List[ClassStudentResponse])
+@router.get("/{class_id}/students", response_model=List[ClassStudentDetailResponse])
 async def get_class_students(
     class_id: int,
     active_only: bool = Query(True),
     supabase: Client = Depends(get_supabase)
 ):
-    """Get all students enrolled in a class."""
+    """Get all students enrolled in a class with detailed information."""
     try:
         class_student_service = ClassStudentService(supabase)
         
-        if active_only:
-            enrollments = await class_student_service.get_active_enrollments(class_id)
-        else:
-            enrollments = await class_student_service.get_by_class(class_id)
+        # Get detailed student information
+        enrollments_with_details = await class_student_service.get_class_students_with_details(
+            class_id, active_only
+        )
         
-        return [ClassStudentResponse(**enrollment.model_dump()) for enrollment in enrollments]
+        return [ClassStudentDetailResponse(**enrollment) for enrollment in enrollments_with_details]
     except Exception as e:
         print(f"Get class students error: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
@@ -439,4 +423,25 @@ async def unenroll_student(
         raise
     except Exception as e:
         print(f"Unenroll student error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+@router.get("/student/{student_id}", response_model=List[StudentClassDetailResponse])
+async def get_student_classes(
+    student_id: int,
+    active_only: bool = Query(True),
+    supabase: Client = Depends(get_supabase)
+):
+    """Get all classes for a specific student with detailed information."""
+    try:
+        class_student_service = ClassStudentService(supabase)
+        
+        # Get detailed class information for the student
+        classes_with_details = await class_student_service.get_student_classes_with_details(
+            student_id, active_only
+        )
+        
+        return [StudentClassDetailResponse(**class_data) for class_data in classes_with_details]
+    except Exception as e:
+        print(f"Get student classes error: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

@@ -14,6 +14,7 @@ class StudentCreate(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=255)
     phone: Optional[str] = Field(None, max_length=20)
     birth_date: Optional[date] = None
+    hometown: Optional[str] = Field(None, max_length=255)
     email: EmailStr
     password: str = Field(..., min_length=6)
 
@@ -27,6 +28,7 @@ class StudentUpdate(BaseModel):
     full_name: Optional[str] = Field(None, min_length=1, max_length=255)
     phone: Optional[str] = Field(None, max_length=20)
     birth_date: Optional[date] = None
+    hometown: Optional[str] = Field(None, max_length=255)
 
 
 class StudentResponse(BaseModel):
@@ -40,6 +42,7 @@ class StudentResponse(BaseModel):
     full_name: str
     phone: Optional[str]
     birth_date: Optional[date]
+    hometown: Optional[str]
     auth_id: str
     created_at: datetime
     updated_at: datetime
@@ -54,6 +57,7 @@ class TeacherCreate(BaseModel):
     full_name: str = Field(..., min_length=1, max_length=255)
     phone: Optional[str] = Field(None, max_length=20)
     birth_date: Optional[date] = None
+    hometown: Optional[str] = Field(None, max_length=255)
     email: EmailStr
     password: str = Field(..., min_length=6)
 
@@ -65,6 +69,7 @@ class TeacherUpdate(BaseModel):
     full_name: Optional[str] = Field(None, min_length=1, max_length=255)
     phone: Optional[str] = Field(None, max_length=20)
     birth_date: Optional[date] = None
+    hometown: Optional[str] = Field(None, max_length=255)
 
 
 class TeacherResponse(BaseModel):
@@ -76,6 +81,7 @@ class TeacherResponse(BaseModel):
     full_name: str
     phone: Optional[str]
     birth_date: Optional[date]
+    hometown: Optional[str]
     auth_id: str
     created_at: datetime
     updated_at: datetime

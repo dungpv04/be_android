@@ -33,6 +33,88 @@ class ClassRepository(BaseRepository[Class]):
     async def get_active_classes(self) -> List[Class]:
         """Get all active classes."""
         return await self.find_by_field("status", "active")
+    
+    async def get_classes_with_details(self, page: int = 1, limit: int = 10, filters: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Get classes with joined data and student count."""
+        try:
+            # Use the fallback method which works with standard Supabase queries
+            return await self._get_classes_with_details_fallback(page, limit, filters)
+            
+        except Exception as e:
+            print(f"Error getting classes with details: {e}")
+            # Ultimate fallback to basic method
+            return await self.get_all(page, limit)
+    
+    async def _get_classes_with_details_fallback(self, page: int, limit: int, filters: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Fallback method using separate queries."""
+        try:
+            # Get basic classes first
+            result = await self.get_all(page, limit)
+            classes = result["items"]
+            
+            # Enhance each class with related data
+            enhanced_classes = []
+            for cls in classes:
+                class_dict = cls.model_dump()
+                
+                # Get related data from other tables
+                if cls.faculty_id:
+                    faculty_response = self.supabase.table("faculties").select("name").eq("id", cls.faculty_id).execute()
+                    class_dict["faculty_name"] = faculty_response.data[0]["name"] if faculty_response.data else None
+                
+                if cls.department_id:
+                    dept_response = self.supabase.table("departments").select("name").eq("id", cls.department_id).execute()
+                    class_dict["department_name"] = dept_response.data[0]["name"] if dept_response.data else None
+                
+                if cls.major_id:
+                    major_response = self.supabase.table("majors").select("name").eq("id", cls.major_id).execute()
+                    class_dict["major_name"] = major_response.data[0]["name"] if major_response.data else None
+                
+                if cls.subject_id:
+                    subject_response = self.supabase.table("subjects").select("name, code").eq("id", cls.subject_id).execute()
+                    if subject_response.data:
+                        class_dict["subject_name"] = subject_response.data[0]["name"]
+                        class_dict["subject_code"] = subject_response.data[0]["code"]
+                
+                if cls.teacher_id:
+                    teacher_response = self.supabase.table("teachers").select("full_name, teacher_code").eq("id", cls.teacher_id).execute()
+                    if teacher_response.data:
+                        class_dict["teacher_name"] = teacher_response.data[0]["full_name"]
+                        class_dict["teacher_code"] = teacher_response.data[0]["teacher_code"]
+                
+                if cls.cohort_id:
+                    cohort_response = self.supabase.table("cohorts").select("name").eq("id", cls.cohort_id).execute()
+                    class_dict["cohort_name"] = cohort_response.data[0]["name"] if cohort_response.data else None
+                
+                if cls.academic_year_id:
+                    ay_response = self.supabase.table("academic_years").select("name").eq("id", cls.academic_year_id).execute()
+                    class_dict["academic_year_name"] = ay_response.data[0]["name"] if ay_response.data else None
+                
+                if cls.semester_id:
+                    sem_response = self.supabase.table("semesters").select("name").eq("id", cls.semester_id).execute()
+                    class_dict["semester_name"] = sem_response.data[0]["name"] if sem_response.data else None
+                
+                if cls.study_phase_id:
+                    sp_response = self.supabase.table("study_phases").select("name").eq("id", cls.study_phase_id).execute()
+                    class_dict["study_phase_name"] = sp_response.data[0]["name"] if sp_response.data else None
+                
+                # Get student count
+                student_count_response = self.supabase.table("class_students").select("id").eq("class_id", cls.id).eq("status", "active").execute()
+                class_dict["student_count"] = len(student_count_response.data) if student_count_response.data else 0
+                
+                enhanced_classes.append(class_dict)
+            
+            return {
+                "items": enhanced_classes,
+                "total": result["total"],
+                "page": result["page"],
+                "limit": result["limit"],
+                "total_pages": result["total_pages"]
+            }
+            
+        except Exception as e:
+            print(f"Error in fallback method: {e}")
+            return await self.get_all(page, limit)
 
 
 class TeachingSessionRepository(BaseRepository[TeachingSession]):
@@ -188,11 +270,183 @@ class ClassStudentRepository(BaseRepository[ClassStudent]):
             print(f"Error getting active enrollments: {e}")
             return []
     
+    async def get_class_students_with_details(self, class_id: int, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Get class students with detailed student information."""
+        try:
+            # Get class students
+            cs_query = self.supabase.table(self.table_name).select("*").eq("class_id", class_id)
+            if active_only:
+                cs_query = cs_query.eq("status", "active")
+            
+            cs_response = cs_query.execute()
+            
+            if not cs_response.data:
+                return []
+            
+            # Get student details for each enrollment
+            result = []
+            for enrollment in cs_response.data:
+                student_response = (self.supabase.table("students")
+                                  .select("full_name, student_code, phone, hometown, class_name")
+                                  .eq("id", enrollment["student_id"])
+                                  .execute())
+                
+                if student_response.data:
+                    student = student_response.data[0]
+                    result.append({
+                        **enrollment,
+                        "student_name": student["full_name"],
+                        "student_code": student["student_code"],
+                        "student_email": None,  # Set to None since email doesn't exist
+                        "student_phone": student.get("phone"),
+                        "student_hometown": student.get("hometown"),
+                        "class_name": student.get("class_name")
+                    })
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error getting class students with details: {e}")
+            return []
+    
+    async def get_student_classes_with_details(self, student_id: int, active_only: bool = True) -> List[Dict[str, Any]]:
+        """Get classes for a specific student with detailed information."""
+        try:
+            # Get class enrollments for the student
+            cs_query = self.supabase.table(self.table_name).select("*").eq("student_id", student_id)
+            if active_only:
+                cs_query = cs_query.eq("status", "active")
+            
+            cs_response = cs_query.execute()
+            
+            if not cs_response.data:
+                return []
+            
+            # Get detailed class information for each enrollment
+            result = []
+            for enrollment in cs_response.data:
+                class_id = enrollment["class_id"]
+                
+                # Get class details with joins
+                class_response = (self.supabase.table("classes")
+                                .select("*")
+                                .eq("id", class_id)
+                                .execute())
+                
+                if not class_response.data:
+                    continue
+                
+                class_data = class_response.data[0]
+                
+                # Get faculty details
+                faculty_response = (self.supabase.table("faculties")
+                                  .select("name")
+                                  .eq("id", class_data.get("faculty_id"))
+                                  .execute())
+                faculty_name = faculty_response.data[0]["name"] if faculty_response.data else None
+                
+                # Get department details
+                department_response = (self.supabase.table("departments")
+                                     .select("name")
+                                     .eq("id", class_data.get("department_id"))
+                                     .execute())
+                department_name = department_response.data[0]["name"] if department_response.data else None
+                
+                # Get major details
+                major_response = (self.supabase.table("majors")
+                                .select("name")
+                                .eq("id", class_data.get("major_id"))
+                                .execute())
+                major_name = major_response.data[0]["name"] if major_response.data else None
+                
+                # Get subject details
+                subject_response = (self.supabase.table("subjects")
+                                  .select("name, code")
+                                  .eq("id", class_data.get("subject_id"))
+                                  .execute())
+                subject_name = subject_response.data[0]["name"] if subject_response.data else None
+                subject_code = subject_response.data[0]["code"] if subject_response.data else None
+                
+                # Get teacher details
+                teacher_response = (self.supabase.table("teachers")
+                                  .select("full_name, teacher_code")
+                                  .eq("id", class_data.get("teacher_id"))
+                                  .execute())
+                teacher_name = teacher_response.data[0]["full_name"] if teacher_response.data else None
+                teacher_code = teacher_response.data[0]["teacher_code"] if teacher_response.data else None
+                
+                # Get cohort details
+                cohort_response = (self.supabase.table("cohorts")
+                                 .select("name")
+                                 .eq("id", class_data.get("cohort_id"))
+                                 .execute())
+                cohort_name = cohort_response.data[0]["name"] if cohort_response.data else None
+                
+                # Get academic year details
+                academic_year_response = (self.supabase.table("academic_years")
+                                        .select("name")
+                                        .eq("id", class_data.get("academic_year_id"))
+                                        .execute())
+                academic_year_name = academic_year_response.data[0]["name"] if academic_year_response.data else None
+                
+                # Get semester details
+                semester_response = (self.supabase.table("semesters")
+                                   .select("name")
+                                   .eq("id", class_data.get("semester_id"))
+                                   .execute())
+                semester_name = semester_response.data[0]["name"] if semester_response.data else None
+                
+                # Get study phase details
+                study_phase_response = (self.supabase.table("study_phases")
+                                      .select("name")
+                                      .eq("id", class_data.get("study_phase_id"))
+                                      .execute())
+                study_phase_name = study_phase_response.data[0]["name"] if study_phase_response.data else None
+                
+                # Get student count for this class
+                student_count_response = (self.supabase.table(self.table_name)
+                                        .select("*", count="exact")
+                                        .eq("class_id", class_id)
+                                        .eq("status", "active")
+                                        .execute())
+                student_count = student_count_response.count if student_count_response.count else 0
+                
+                # Combine all data
+                result.append({
+                    **class_data,
+                    "faculty_name": faculty_name,
+                    "department_name": department_name,
+                    "major_name": major_name,
+                    "subject_name": subject_name,
+                    "subject_code": subject_code,
+                    "teacher_name": teacher_name,
+                    "teacher_code": teacher_code,
+                    "cohort_name": cohort_name,
+                    "academic_year_name": academic_year_name,
+                    "semester_name": semester_name,
+                    "study_phase_name": study_phase_name,
+                    "student_count": student_count,
+                    # Enrollment details
+                    "enrollment_id": enrollment["id"],
+                    "enrolled_at": enrollment["enrolled_at"],
+                    "enrollment_status": enrollment["status"]
+                })
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error getting student classes with details: {e}")
+            return []
+    
     async def enroll_student(self, class_id: int, student_id: int) -> Optional[ClassStudent]:
         """Enroll a student in a class."""
         try:
             # Check if already enrolled
-            existing = await self.supabase.table(self.table_name).select("*").eq("class_id", class_id).eq("student_id", student_id).execute()
+            existing = (self.supabase.table(self.table_name)
+                       .select("*")
+                       .eq("class_id", class_id)
+                       .eq("student_id", student_id)
+                       .execute())
             
             if existing.data:
                 # Update status to active if inactive
