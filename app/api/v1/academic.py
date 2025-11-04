@@ -199,6 +199,75 @@ async def get_departments(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
+@router.get("/departments/{department_id}", response_model=DepartmentResponse)
+async def get_department(
+    department_id: int,
+    supabase: Client = Depends(get_supabase)
+):
+    """Get department by ID."""
+    try:
+        department_service = DepartmentService(supabase)
+        department = await department_service.get_by_id(department_id)
+        
+        if not department:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Department not found")
+        
+        return DepartmentResponse(**department.model_dump())
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get department error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+@router.put("/departments/{department_id}", response_model=BaseResponse)
+async def update_department(
+    department_id: int,
+    department_data: DepartmentUpdate,
+    supabase: Client = Depends(get_supabase)
+):
+    """Update department by ID."""
+    try:
+        department_service = DepartmentService(supabase)
+        department = await department_service.update(department_id, department_data.model_dump(exclude_unset=True))
+        
+        if not department:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Department not found")
+        
+        return BaseResponse(
+            message="Department updated successfully",
+            data={"id": department.id, "name": department.name, "code": department.code}
+        )
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        print(f"Update department error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+@router.delete("/departments/{department_id}", response_model=BaseResponse)
+async def delete_department(
+    department_id: int,
+    supabase: Client = Depends(get_supabase)
+):
+    """Delete department by ID."""
+    try:
+        department_service = DepartmentService(supabase)
+        success = await department_service.delete(department_id)
+        
+        if not success:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Department not found")
+        
+        return BaseResponse(message="Department deleted successfully")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Delete department error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
 # Similar patterns for Major, Subject, AcademicYear, and Cohort endpoints
 
 # Major endpoints

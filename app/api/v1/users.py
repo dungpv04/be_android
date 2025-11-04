@@ -314,3 +314,55 @@ async def get_teacher(
     except Exception as e:
         print(f"Get teacher error: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+@router.put("/teachers/{teacher_id}", response_model=BaseResponse)
+async def update_teacher(
+    teacher_id: int,
+    teacher_data: TeacherUpdate,
+    supabase: Client = Depends(get_supabase)
+):
+    """Update teacher by ID."""
+    try:
+        teacher_service = TeacherService(supabase)
+        teacher = await teacher_service.update(teacher_id, teacher_data.model_dump(exclude_unset=True))
+        
+        if not teacher:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Teacher not found")
+        
+        return BaseResponse(
+            message="Teacher updated successfully",
+            data={
+                "id": teacher.id,
+                "teacher_code": teacher.teacher_code,
+                "full_name": teacher.full_name
+            }
+        )
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        print(f"Update teacher error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+@router.delete("/teachers/{teacher_id}", response_model=BaseResponse)
+async def delete_teacher(
+    teacher_id: int,
+    supabase: Client = Depends(get_supabase)
+):
+    """Delete teacher by ID."""
+    try:
+        teacher_service = TeacherService(supabase)
+        success = await teacher_service.delete(teacher_id)
+        
+        if not success:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Teacher not found")
+        
+        return BaseResponse(message="Teacher deleted successfully")
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Delete teacher error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
