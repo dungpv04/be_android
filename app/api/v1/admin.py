@@ -16,17 +16,20 @@ async def create_admin(
     """Create a new admin user."""
     try:
         # Create auth user with admin role
-        auth_user = await auth_service.create_user_with_supabase(
+        auth_response = await auth_service.create_user_with_supabase(
             admin_data.email, 
             admin_data.password,
             user_metadata={"user_type": "admin"}
         )
         
-        if not auth_user:
+        if not auth_response or not auth_response.get("user"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to create admin auth user"
             )
+        
+        # Extract user from response
+        auth_user = auth_response["user"]
         
         # Create admin profile
         admin_service = AdminService(supabase)
