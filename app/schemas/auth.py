@@ -57,3 +57,53 @@ class RegisterRequest(BaseModel):
 class TokenData(BaseModel):
     """Token data schema."""
     email: Optional[str] = None
+
+
+# Profile Schemas for /me endpoint
+class AdminProfile(BaseModel):
+    """Admin profile schema."""
+    id: int
+    auth_id: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class TeacherProfile(BaseModel):
+    """Teacher profile schema."""
+    id: int
+    faculty_id: Optional[int] = None
+    department_id: Optional[int] = None
+    teacher_code: str
+    full_name: str
+    phone: Optional[str] = None
+    birth_date: Optional[str] = None
+    hometown: Optional[str] = None
+    auth_id: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class StudentProfile(BaseModel):
+    """Student profile schema."""
+    id: int
+    faculty_id: Optional[int] = None
+    major_id: Optional[int] = None
+    cohort_id: Optional[int] = None
+    class_name: str
+    student_code: str
+    full_name: str
+    phone: Optional[str] = None
+    birth_date: Optional[str] = None
+    hometown: Optional[str] = None
+    auth_id: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class UserMeResponse(BaseModel):
+    """User profile response for /me endpoint."""
+    id: str  # auth_id
+    auth_id: str
+    email: str
+    user_type: str  # admin, teacher, student, unknown
+    profile: Optional[dict] = None  # AdminProfile, TeacherProfile, or StudentProfile

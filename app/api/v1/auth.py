@@ -4,7 +4,7 @@ from typing import Dict, Any
 from supabase import Client
 from app.core.database import get_supabase
 from app.core.auth import auth_service
-from app.schemas import LoginRequest, LoginResponse, RegisterRequest, BaseResponse
+from app.schemas import LoginRequest, LoginResponse, RegisterRequest, BaseResponse, UserMeResponse
 from app.services import StudentService, TeacherService, AdminService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -153,12 +153,12 @@ async def register(
         )
 
 
-@router.get("/me")
+@router.get("/me", response_model=BaseResponse)
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     supabase: Client = Depends(get_supabase)
 ):
-    """Get current user information."""
+    """Get current user information with full profile data."""
     try:
         token = credentials.credentials
         user = await auth_service.get_current_user_from_token(token)
@@ -169,30 +169,90 @@ async def get_current_user(
                 detail="Invalid or expired token"
             )
         
-        # Get user details based on user type
-        user_type = user.user_metadata.get("user_type", "student")
-        user_details = {"id": user.id, "email": user.email, "user_type": user_type}
+        # Get user details - check all user types to determine the correct one and return full profile
+        user_details = None
         
-        if user_type == "student":
-            student_service = StudentService(supabase)
-            student = await student_service.get_by_auth_id(user.id)
-            if student:
-                user_details.update({
-                    "profile_id": student.id,
-                    "student_code": student.student_code,
-                    "full_name": student.full_name
-                })
-        elif user_type == "teacher":
+        # Check if user is admin first
+        admin_service = AdminService(supabase)
+        admin = await admin_service.get_by_auth_id(user.id)
+        if admin:
+            user_details = {
+                "id": admin.id,
+                "auth_id": admin.auth_id,
+                "email": user.email,
+                "user_type": "admin",
+                "profile": {
+                    "id": admin.id,
+                    "auth_id": admin.auth_id,
+                    "created_at": admin.created_at.isoformat() if admin.created_at else None,
+                    "updated_at": admin.updated_at.isoformat() if admin.updated_at else None
+                }
+            }
+        else:
+            # Check if user is teacher
             teacher_service = TeacherService(supabase)
             teacher = await teacher_service.get_by_auth_id(user.id)
             if teacher:
-                user_details.update({
-                    "profile_id": teacher.id,
-                    "teacher_code": teacher.teacher_code,
-                    "full_name": teacher.full_name
-                })
+                user_details = {
+                    "id": teacher.id,
+                    "auth_id": teacher.auth_id,
+                    "email": user.email,
+                    "user_type": "teacher",
+                    "profile": {
+                        "id": teacher.id,
+                        "faculty_id": teacher.faculty_id,
+                        "department_id": teacher.department_id,
+                        "teacher_code": teacher.teacher_code,
+                        "full_name": teacher.full_name,
+                        "phone": teacher.phone,
+                        "birth_date": teacher.birth_date.isoformat() if teacher.birth_date else None,
+                        "hometown": teacher.hometown,
+                        "auth_id": teacher.auth_id,
+                        "created_at": teacher.created_at.isoformat() if teacher.created_at else None,
+                        "updated_at": teacher.updated_at.isoformat() if teacher.updated_at else None
+                    }
+                }
+            else:
+                # Check if user is student
+                student_service = StudentService(supabase)
+                student = await student_service.get_by_auth_id(user.id)
+                if student:
+                    user_details = {
+                        "id": student.id,
+                        "auth_id": student.auth_id,
+                        "email": user.email,
+                        "user_type": "student",
+                        "profile": {
+                            "id": student.id,
+                            "faculty_id": student.faculty_id,
+                            "major_id": student.major_id,
+                            "cohort_id": student.cohort_id,
+                            "class_name": student.class_name,
+                            "student_code": student.student_code,
+                            "full_name": student.full_name,
+                            "phone": student.phone,
+                            "birth_date": student.birth_date.isoformat() if student.birth_date else None,
+                            "hometown": student.hometown,
+                            "auth_id": student.auth_id,
+                            "created_at": student.created_at.isoformat() if student.created_at else None,
+                            "updated_at": student.updated_at.isoformat() if student.updated_at else None
+                        }
+                    }
         
-        return BaseResponse(data=user_details)
+        if not user_details:
+            # Fallback for unknown user type
+            user_details = {
+                "id": user.id,
+                "email": user.email,
+                "user_type": "unknown",
+                "auth_id": user.id,
+                "profile": None
+            }
+        
+        return BaseResponse(
+            message="User profile retrieved successfully",
+            data=user_details
+        )
         
     except HTTPException:
         raise
