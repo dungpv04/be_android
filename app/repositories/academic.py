@@ -76,6 +76,32 @@ class SubjectRepository(BaseRepository[Subject]):
         """Get subjects by department ID."""
         return await self.find_by_field("department_id", department_id)
     
+    async def get_by_faculty(self, faculty_id: int) -> List[Subject]:
+        """Get subjects by faculty ID through department relationship."""
+        try:
+            # First get all departments for this faculty
+            dept_response = (self.supabase.table("departments")
+                            .select("id")
+                            .eq("faculty_id", faculty_id)
+                            .execute())
+            
+            if not dept_response.data:
+                return []
+            
+            # Extract department IDs
+            department_ids = [dept["id"] for dept in dept_response.data]
+            
+            # Get all subjects for these departments
+            response = (self.supabase.table(self.table_name)
+                       .select("*")
+                       .in_("department_id", department_ids)
+                       .execute())
+            
+            return [self.model_class(**item) for item in response.data]
+        except Exception as e:
+            print(f"Error getting subjects by faculty: {e}")
+            return []
+    
     async def get_by_code(self, code: str) -> Optional[Subject]:
         """Get subject by code."""
         try:

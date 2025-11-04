@@ -94,6 +94,10 @@ class SubjectService(BaseService[Subject]):
         """Get subjects by department."""
         return await self.repository.get_by_department(department_id)
     
+    async def get_by_faculty(self, faculty_id: int) -> List[Subject]:
+        """Get subjects by faculty through department relationship."""
+        return await self.repository.get_by_faculty(faculty_id)
+    
     async def create(self, data: Dict[str, Any]) -> Optional[Subject]:
         """Create subject with validation."""
         # Check if code is unique

@@ -429,13 +429,25 @@ async def get_subjects(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
     department_id: int = Query(None),
+    faculty_id: int = Query(None),
     supabase: Client = Depends(get_supabase)
 ):
-    """Get all subjects with pagination and optional department filter."""
+    """Get all subjects with pagination and optional department/faculty filters."""
     try:
         subject_service = SubjectService(supabase)
         
-        if department_id:
+        if faculty_id:
+            # Filter by faculty (through department relationship)
+            subjects = await subject_service.get_by_faculty(faculty_id)
+            return PaginatedResponse(
+                items=[subj.model_dump() for subj in subjects],
+                total=len(subjects),
+                page=1,
+                limit=len(subjects),
+                total_pages=1
+            )
+        elif department_id:
+            # Filter by department
             subjects = await subject_service.get_by_department(department_id)
             return PaginatedResponse(
                 items=[subj.model_dump() for subj in subjects],
@@ -445,6 +457,7 @@ async def get_subjects(
                 total_pages=1
             )
         else:
+            # Get all subjects with pagination
             result = await subject_service.get_all(page, limit)
             return PaginatedResponse(
                 items=[subj.model_dump() for subj in result["items"]],
