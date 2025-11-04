@@ -132,6 +132,43 @@ class AttendanceResponse(BaseModel):
     updated_at: datetime
 
 
+class AttendanceDetailResponse(BaseModel):
+    """Schema for detailed attendance response with joined data."""
+    # Attendance details
+    id: int
+    session_id: int
+    student_id: int
+    attendance_time: Optional[datetime]
+    status: str
+    confidence_score: Optional[float]
+    ip_address: Optional[str]
+    user_agent: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+    # Student details
+    student_name: str
+    student_code: str
+    student_phone: Optional[str] = None
+    student_hometown: Optional[str] = None
+    student_class_name: Optional[str] = None
+    # Session details
+    session_date: date
+    session_start_time: time
+    session_end_time: time
+    session_type: Optional[str] = None
+    session_status: str
+    # Class details
+    class_id: int
+    class_name: str
+    class_code: str
+    # Subject details
+    subject_name: Optional[str] = None
+    subject_code: Optional[str] = None
+    # Teacher details
+    teacher_name: Optional[str] = None
+    teacher_code: Optional[str] = None
+
+
 # Class Student Schemas
 class ClassStudentCreate(BaseModel):
     """Schema for enrolling student in class."""

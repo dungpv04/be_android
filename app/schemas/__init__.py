@@ -25,7 +25,7 @@ from .admin import (
 from .classes import (
     ClassCreate, ClassUpdate, ClassResponse,
     TeachingSessionCreate, TeachingSessionUpdate, TeachingSessionResponse,
-    AttendanceCreate, AttendanceUpdate, AttendanceResponse,
+    AttendanceCreate, AttendanceUpdate, AttendanceResponse, AttendanceDetailResponse,
     ClassStudentCreate, ClassStudentResponse, ClassStudentDetailResponse,
     StudentClassDetailResponse
 )
@@ -56,7 +56,7 @@ __all__ = [
     # Class schemas
     "ClassCreate", "ClassUpdate", "ClassResponse",
     "TeachingSessionCreate", "TeachingSessionUpdate", "TeachingSessionResponse",
-    "AttendanceCreate", "AttendanceUpdate", "AttendanceResponse",
+    "AttendanceCreate", "AttendanceUpdate", "AttendanceResponse", "AttendanceDetailResponse",
     "ClassStudentCreate", "ClassStudentResponse", "ClassStudentDetailResponse",
     "StudentClassDetailResponse"
 ]

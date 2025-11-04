@@ -9,7 +9,7 @@ from app.core.database import get_supabase
 from app.schemas import (
     ClassCreate, ClassUpdate, ClassResponse,
     TeachingSessionCreate, TeachingSessionUpdate, TeachingSessionResponse,
-    AttendanceCreate, AttendanceUpdate, AttendanceResponse,
+    AttendanceCreate, AttendanceUpdate, AttendanceResponse, AttendanceDetailResponse,
     ClassStudentCreate, ClassStudentResponse, ClassStudentDetailResponse,
     StudentClassDetailResponse,
     BaseResponse, PaginatedResponse
@@ -420,17 +420,19 @@ async def mark_attendance_by_qr(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
-@router.get("/sessions/{session_id}/attendance", response_model=List[AttendanceResponse])
+@router.get("/sessions/{session_id}/attendance", response_model=List[AttendanceDetailResponse])
 async def get_session_attendance(
     session_id: int,
     supabase: Client = Depends(get_supabase)
 ):
-    """Get all attendance records for a session."""
+    """Get all attendance records for a session with detailed information."""
     try:
         attendance_service = AttendanceService(supabase)
-        attendances = await attendance_service.get_by_session(session_id)
         
-        return [AttendanceResponse(**attendance.model_dump()) for attendance in attendances]
+        # Get detailed attendance information
+        attendance_details = await attendance_service.get_session_attendance_with_details(session_id)
+        
+        return [AttendanceDetailResponse(**attendance) for attendance in attendance_details]
     except Exception as e:
         print(f"Get session attendance error: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

@@ -187,6 +187,100 @@ class AttendanceRepository(BaseRepository[Attendance]):
         """Get attendance by session ID."""
         return await self.find_by_field("session_id", session_id)
     
+    async def get_session_attendance_with_details(self, session_id: int) -> List[Dict[str, Any]]:
+        """Get attendance for a session with detailed joined information."""
+        try:
+            # Get attendance records for the session
+            attendance_response = (self.supabase.table(self.table_name)
+                                 .select("*")
+                                 .eq("session_id", session_id)
+                                 .execute())
+            
+            if not attendance_response.data:
+                return []
+            
+            # Get session details
+            session_response = (self.supabase.table("teaching_sessions")
+                              .select("*")
+                              .eq("id", session_id)
+                              .execute())
+            
+            session_data = session_response.data[0] if session_response.data else {}
+            class_id = session_data.get("class_id")
+            
+            # Get class details
+            class_response = (self.supabase.table("classes")
+                            .select("*")
+                            .eq("id", class_id)
+                            .execute()) if class_id else None
+            
+            class_data = class_response.data[0] if class_response and class_response.data else {}
+            
+            # Get subject details
+            subject_data = {}
+            if class_data.get("subject_id"):
+                subject_response = (self.supabase.table("subjects")
+                                  .select("name, code")
+                                  .eq("id", class_data["subject_id"])
+                                  .execute())
+                subject_data = subject_response.data[0] if subject_response.data else {}
+            
+            # Get teacher details
+            teacher_data = {}
+            if class_data.get("teacher_id"):
+                teacher_response = (self.supabase.table("teachers")
+                                  .select("full_name, teacher_code")
+                                  .eq("id", class_data["teacher_id"])
+                                  .execute())
+                teacher_data = teacher_response.data[0] if teacher_response.data else {}
+            
+            # Process each attendance record
+            result = []
+            for attendance in attendance_response.data:
+                # Get student details
+                student_response = (self.supabase.table("students")
+                                  .select("full_name, student_code, phone, hometown, class_name")
+                                  .eq("id", attendance["student_id"])
+                                  .execute())
+                
+                student_data = student_response.data[0] if student_response.data else {}
+                
+                # Combine all data
+                detailed_attendance = {
+                    # Attendance details
+                    **attendance,
+                    # Student details
+                    "student_name": student_data.get("full_name"),
+                    "student_code": student_data.get("student_code"),
+                    "student_phone": student_data.get("phone"),
+                    "student_hometown": student_data.get("hometown"),
+                    "student_class_name": student_data.get("class_name"),
+                    # Session details
+                    "session_date": session_data.get("session_date"),
+                    "session_start_time": session_data.get("start_time"),
+                    "session_end_time": session_data.get("end_time"),
+                    "session_type": session_data.get("session_type"),
+                    "session_status": session_data.get("status"),
+                    # Class details
+                    "class_id": class_data.get("id"),
+                    "class_name": class_data.get("name"),
+                    "class_code": class_data.get("code"),
+                    # Subject details
+                    "subject_name": subject_data.get("name"),
+                    "subject_code": subject_data.get("code"),
+                    # Teacher details
+                    "teacher_name": teacher_data.get("full_name"),
+                    "teacher_code": teacher_data.get("teacher_code")
+                }
+                
+                result.append(detailed_attendance)
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error getting session attendance with details: {e}")
+            return []
+    
     async def get_by_student(self, student_id: int) -> List[Attendance]:
         """Get attendance by student ID."""
         return await self.find_by_field("student_id", student_id)
