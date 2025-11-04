@@ -132,6 +132,10 @@ class AttendanceService(BaseService[Attendance]):
         """Get attendance for a session with detailed joined information."""
         return await self.repository.get_session_attendance_with_details(session_id)
     
+    async def get_session_student_attendance_with_details(self, session_id: int, student_id: int) -> List[Dict[str, Any]]:
+        """Get attendance for a specific student in a session with detailed joined information."""
+        return await self.repository.get_session_student_attendance_with_details(session_id, student_id)
+    
     async def get_by_student(self, student_id: int) -> List[Attendance]:
         """Get attendance by student."""
         return await self.repository.get_by_student(student_id)

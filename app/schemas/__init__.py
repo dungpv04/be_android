@@ -27,7 +27,7 @@ from .classes import (
     TeachingSessionCreate, TeachingSessionUpdate, TeachingSessionResponse,
     AttendanceCreate, AttendanceUpdate, AttendanceResponse, AttendanceDetailResponse,
     ClassStudentCreate, ClassStudentResponse, ClassStudentDetailResponse,
-    StudentClassDetailResponse
+    StudentClassDetailResponse, MultipleSessionsAttendanceRequest
 )
 
 __all__ = [
@@ -58,5 +58,5 @@ __all__ = [
     "TeachingSessionCreate", "TeachingSessionUpdate", "TeachingSessionResponse",
     "AttendanceCreate", "AttendanceUpdate", "AttendanceResponse", "AttendanceDetailResponse",
     "ClassStudentCreate", "ClassStudentResponse", "ClassStudentDetailResponse",
-    "StudentClassDetailResponse"
+    "StudentClassDetailResponse", "MultipleSessionsAttendanceRequest"
 ]

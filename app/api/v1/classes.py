@@ -11,7 +11,7 @@ from app.schemas import (
     TeachingSessionCreate, TeachingSessionUpdate, TeachingSessionResponse,
     AttendanceCreate, AttendanceUpdate, AttendanceResponse, AttendanceDetailResponse,
     ClassStudentCreate, ClassStudentResponse, ClassStudentDetailResponse,
-    StudentClassDetailResponse,
+    StudentClassDetailResponse, MultipleSessionsAttendanceRequest,
     BaseResponse, PaginatedResponse
 )
 from app.services import (
@@ -455,6 +455,46 @@ async def get_session_attendance(
         return [AttendanceDetailResponse(**attendance) for attendance in attendance_details]
     except Exception as e:
         print(f"Get session attendance error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+@router.post("/sessions/student/{student_id}/attendance")
+async def get_multiple_sessions_student_attendance(
+    student_id: int,
+    request: MultipleSessionsAttendanceRequest,
+    supabase: Client = Depends(get_supabase)
+):
+    """Get multiple sessions details and specific student's attendance with all FK joins."""
+    try:
+        session_service = TeachingSessionService(supabase)
+        attendance_service = AttendanceService(supabase)
+        
+        result = []
+        
+        for session_id in request.session_ids:
+            # Get session details
+            session = await session_service.get_by_id(session_id)
+            if not session:
+                # Skip sessions that don't exist, or you can choose to raise an error
+                continue
+            
+            # Get detailed attendance for the specific student in this session
+            attendance_details = await attendance_service.get_session_student_attendance_with_details(
+                session_id, student_id
+            )
+            
+            result.append({
+                "session": session.model_dump(),
+                "student_attendance": attendance_details
+            })
+        
+        return {
+            "student_id": student_id,
+            "sessions_data": result,
+            "total_sessions": len(result)
+        }
+    except Exception as e:
+        print(f"Get multiple sessions student attendance error: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 

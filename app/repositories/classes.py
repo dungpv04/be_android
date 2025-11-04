@@ -324,6 +324,172 @@ class AttendanceRepository(BaseRepository[Attendance]):
             print(f"Error getting session attendance with details: {e}")
             return []
     
+    async def get_session_student_attendance_with_details(self, session_id: int, student_id: int) -> List[Dict[str, Any]]:
+        """Get attendance for a specific student in a session with detailed joined information."""
+        try:
+            # Get attendance records for the specific student in the session
+            attendance_response = (self.supabase.table(self.table_name)
+                                 .select("*")
+                                 .eq("session_id", session_id)
+                                 .eq("student_id", student_id)
+                                 .execute())
+            
+            if not attendance_response.data:
+                return []
+            
+            # Get session details
+            session_response = (self.supabase.table("teaching_sessions")
+                              .select("*")
+                              .eq("id", session_id)
+                              .execute())
+            
+            session_data = session_response.data[0] if session_response.data else {}
+            class_id = session_data.get("class_id")
+            
+            # Get class details
+            class_response = (self.supabase.table("classes")
+                            .select("*")
+                            .eq("id", class_id)
+                            .execute()) if class_id else None
+            
+            class_data = class_response.data[0] if class_response and class_response.data else {}
+            
+            # Get subject details
+            subject_data = {}
+            if class_data.get("subject_id"):
+                subject_response = (self.supabase.table("subjects")
+                                  .select("name, code")
+                                  .eq("id", class_data["subject_id"])
+                                  .execute())
+                subject_data = subject_response.data[0] if subject_response.data else {}
+            
+            # Get teacher details
+            teacher_data = {}
+            if class_data.get("teacher_id"):
+                teacher_response = (self.supabase.table("teachers")
+                                  .select("full_name, teacher_code")
+                                  .eq("id", class_data["teacher_id"])
+                                  .execute())
+                teacher_data = teacher_response.data[0] if teacher_response.data else {}
+            
+            # Get student details
+            student_response = (self.supabase.table("students")
+                              .select("full_name, student_code, phone, hometown, class_name")
+                              .eq("id", student_id)
+                              .execute())
+            
+            student_data = student_response.data[0] if student_response.data else {}
+            
+            # Get faculty details
+            faculty_data = {}
+            if class_data.get("faculty_id"):
+                faculty_response = (self.supabase.table("faculties")
+                                  .select("name")
+                                  .eq("id", class_data["faculty_id"])
+                                  .execute())
+                faculty_data = faculty_response.data[0] if faculty_response.data else {}
+            
+            # Get department details
+            department_data = {}
+            if class_data.get("department_id"):
+                department_response = (self.supabase.table("departments")
+                                     .select("name")
+                                     .eq("id", class_data["department_id"])
+                                     .execute())
+                department_data = department_response.data[0] if department_response.data else {}
+            
+            # Get major details
+            major_data = {}
+            if class_data.get("major_id"):
+                major_response = (self.supabase.table("majors")
+                                .select("name")
+                                .eq("id", class_data["major_id"])
+                                .execute())
+                major_data = major_response.data[0] if major_response.data else {}
+            
+            # Get cohort details
+            cohort_data = {}
+            if class_data.get("cohort_id"):
+                cohort_response = (self.supabase.table("cohorts")
+                                 .select("name")
+                                 .eq("id", class_data["cohort_id"])
+                                 .execute())
+                cohort_data = cohort_response.data[0] if cohort_response.data else {}
+            
+            # Get academic year details
+            academic_year_data = {}
+            if class_data.get("academic_year_id"):
+                academic_year_response = (self.supabase.table("academic_years")
+                                        .select("name")
+                                        .eq("id", class_data["academic_year_id"])
+                                        .execute())
+                academic_year_data = academic_year_response.data[0] if academic_year_response.data else {}
+            
+            # Get semester details
+            semester_data = {}
+            if class_data.get("semester_id"):
+                semester_response = (self.supabase.table("semesters")
+                                   .select("name")
+                                   .eq("id", class_data["semester_id"])
+                                   .execute())
+                semester_data = semester_response.data[0] if semester_response.data else {}
+            
+            # Get study phase details
+            study_phase_data = {}
+            if class_data.get("study_phase_id"):
+                study_phase_response = (self.supabase.table("study_phases")
+                                      .select("name")
+                                      .eq("id", class_data["study_phase_id"])
+                                      .execute())
+                study_phase_data = study_phase_response.data[0] if study_phase_response.data else {}
+            
+            # Process each attendance record
+            result = []
+            for attendance in attendance_response.data:
+                # Combine all data
+                detailed_attendance = {
+                    # Attendance details
+                    **attendance,
+                    # Student details
+                    "student_name": student_data.get("full_name"),
+                    "student_code": student_data.get("student_code"),
+                    "student_phone": student_data.get("phone"),
+                    "student_hometown": student_data.get("hometown"),
+                    "student_class_name": student_data.get("class_name"),
+                    # Session details
+                    "session_date": session_data.get("session_date"),
+                    "session_start_time": session_data.get("start_time"),
+                    "session_end_time": session_data.get("end_time"),
+                    "session_type": session_data.get("session_type"),
+                    "session_status": session_data.get("status"),
+                    # Class details
+                    "class_id": class_data.get("id"),
+                    "class_name": class_data.get("name"),
+                    "class_code": class_data.get("code"),
+                    # Subject details
+                    "subject_name": subject_data.get("name"),
+                    "subject_code": subject_data.get("code"),
+                    # Teacher details
+                    "teacher_name": teacher_data.get("full_name"),
+                    "teacher_code": teacher_data.get("teacher_code"),
+                    # Additional FK details
+                    "faculty_name": faculty_data.get("name"),
+                    "department_name": department_data.get("name"),
+                    "major_name": major_data.get("name"),
+                    "cohort_name": cohort_data.get("name"),
+                    "academic_year_name": academic_year_data.get("name"),
+                    "semester_name": semester_data.get("name"),
+                    "study_phase_name": study_phase_data.get("name")
+                }
+                
+                result.append(detailed_attendance)
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error getting session student attendance with details: {e}")
+            return []
+    
     async def get_by_student(self, student_id: int) -> List[Attendance]:
         """Get attendance by student ID."""
         return await self.find_by_field("student_id", student_id)

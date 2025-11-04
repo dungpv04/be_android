@@ -1,5 +1,5 @@
 from datetime import date, time, datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -235,3 +235,8 @@ class StudentClassDetailResponse(BaseModel):
     enrollment_id: int
     enrolled_at: datetime
     enrollment_status: str
+
+
+class MultipleSessionsAttendanceRequest(BaseModel):
+    """Schema for requesting attendance for multiple sessions."""
+    session_ids: List[int] = Field(..., min_length=1, description="List of session IDs to get attendance for")
