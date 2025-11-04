@@ -58,17 +58,25 @@ async def create_class(
 async def get_classes(
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
+    # Existing filters
     teacher_id: int = Query(None),
     subject_id: int = Query(None),
     semester_id: int = Query(None),
+    # New filters for all FK attributes
+    faculty_id: int = Query(None),
+    department_id: int = Query(None),
+    major_id: int = Query(None),
+    cohort_id: int = Query(None),
+    academic_year_id: int = Query(None),
+    study_phase_id: int = Query(None),
     active_only: bool = Query(True),
     supabase: Client = Depends(get_supabase)
 ):
-    """Get all classes with pagination, joined data, and student count."""
+    """Get all classes with pagination, joined data, student count, and comprehensive filtering."""
     try:
         class_service = ClassService(supabase)
         
-        # Build filters
+        # Build filters dictionary with all possible filters
         filters = {}
         if teacher_id:
             filters["teacher_id"] = teacher_id
@@ -76,6 +84,18 @@ async def get_classes(
             filters["subject_id"] = subject_id
         if semester_id:
             filters["semester_id"] = semester_id
+        if faculty_id:
+            filters["faculty_id"] = faculty_id
+        if department_id:
+            filters["department_id"] = department_id
+        if major_id:
+            filters["major_id"] = major_id
+        if cohort_id:
+            filters["cohort_id"] = cohort_id
+        if academic_year_id:
+            filters["academic_year_id"] = academic_year_id
+        if study_phase_id:
+            filters["study_phase_id"] = study_phase_id
         
         # Use the enhanced method with joins and student count
         result = await class_service.get_classes_with_details(page, limit, filters)

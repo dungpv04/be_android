@@ -46,11 +46,54 @@ class ClassRepository(BaseRepository[Class]):
             return await self.get_all(page, limit)
     
     async def _get_classes_with_details_fallback(self, page: int, limit: int, filters: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Fallback method using separate queries."""
+        """Fallback method using separate queries with comprehensive filtering."""
         try:
-            # Get basic classes first
-            result = await self.get_all(page, limit)
-            classes = result["items"]
+            # Build query with filters
+            offset = (page - 1) * limit
+            
+            # Start with base query
+            query = self.supabase.table(self.table_name).select("*", count="exact")
+            
+            # Add filters
+            query = query.eq("status", "active")  # Default filter for active classes
+            
+            if filters:
+                if filters.get("teacher_id"):
+                    query = query.eq("teacher_id", filters["teacher_id"])
+                if filters.get("subject_id"):
+                    query = query.eq("subject_id", filters["subject_id"])
+                if filters.get("semester_id"):
+                    query = query.eq("semester_id", filters["semester_id"])
+                if filters.get("faculty_id"):
+                    query = query.eq("faculty_id", filters["faculty_id"])
+                if filters.get("department_id"):
+                    query = query.eq("department_id", filters["department_id"])
+                if filters.get("major_id"):
+                    query = query.eq("major_id", filters["major_id"])
+                if filters.get("cohort_id"):
+                    query = query.eq("cohort_id", filters["cohort_id"])
+                if filters.get("academic_year_id"):
+                    query = query.eq("academic_year_id", filters["academic_year_id"])
+                if filters.get("study_phase_id"):
+                    query = query.eq("study_phase_id", filters["study_phase_id"])
+            
+            # Execute query with pagination
+            response = query.range(offset, offset + limit - 1).execute()
+            
+            if not response.data:
+                return {
+                    "items": [],
+                    "total": 0,
+                    "page": page,
+                    "limit": limit,
+                    "total_pages": 0
+                }
+            
+            # Get total count
+            total = response.count if response.count else 0
+            
+            # Convert to model instances
+            classes = [self.model_class(**item) for item in response.data]
             
             # Enhance each class with related data
             enhanced_classes = []
@@ -106,10 +149,10 @@ class ClassRepository(BaseRepository[Class]):
             
             return {
                 "items": enhanced_classes,
-                "total": result["total"],
-                "page": result["page"],
-                "limit": result["limit"],
-                "total_pages": result["total_pages"]
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "total_pages": (total + limit - 1) // limit
             }
             
         except Exception as e:
