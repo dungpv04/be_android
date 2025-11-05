@@ -3,7 +3,10 @@
 from .auth import (
     LoginRequest, LoginResponse, RegisterRequest, TokenData,
     BaseResponse, ErrorResponse, PaginationParams, PaginatedResponse,
-    AdminProfile, TeacherProfile, StudentProfile, UserMeResponse
+    AdminProfile, TeacherProfile, StudentProfile, UserMeResponse,
+    PasswordResetRequest, PasswordResetResponse,
+    VerifyOTPRequest, VerifyOTPResponse,
+    UpdatePasswordRequest, UpdatePasswordResponse
 )
 from .academic import (
     AcademicYearCreate, AcademicYearUpdate, AcademicYearResponse,
@@ -38,6 +41,9 @@ __all__ = [
     "LoginRequest", "LoginResponse", "RegisterRequest", "TokenData",
     "BaseResponse", "ErrorResponse", "PaginationParams", "PaginatedResponse",
     "AdminProfile", "TeacherProfile", "StudentProfile", "UserMeResponse",
+    "PasswordResetRequest", "PasswordResetResponse",
+    "VerifyOTPRequest", "VerifyOTPResponse",
+    "UpdatePasswordRequest", "UpdatePasswordResponse",
     
     # Academic schemas
     "AcademicYearCreate", "AcademicYearUpdate", "AcademicYearResponse",

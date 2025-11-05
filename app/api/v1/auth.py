@@ -2,9 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Any
 from supabase import Client
-from app.core.database import get_supabase
+from app.core.database import get_supabase, get_supabase_admin
 from app.core.auth import auth_service
-from app.schemas import LoginRequest, LoginResponse, RegisterRequest, BaseResponse, UserMeResponse
+from app.schemas import (
+    LoginRequest, LoginResponse, RegisterRequest, BaseResponse, UserMeResponse, 
+    PasswordResetRequest, PasswordResetResponse,
+    VerifyOTPRequest, VerifyOTPResponse,
+    UpdatePasswordRequest, UpdatePasswordResponse
+)
 from app.services import StudentService, TeacherService, AdminService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -261,4 +266,113 @@ async def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get user information"
+        )
+
+
+@router.post("/password-reset", response_model=PasswordResetResponse)
+async def password_reset(
+    reset_data: PasswordResetRequest,
+    supabase: Client = Depends(get_supabase)
+):
+    """Send password reset OTP email to user."""
+    try:
+        # Use Supabase Auth to send OTP email for password reset
+        response = supabase.auth.reset_password_email(
+            email=reset_data.email,
+            options={
+                "redirect_to": None  # This ensures OTP is sent instead of magic link
+            }
+        )
+        
+        # Note: Supabase doesn't return error for non-existent emails for security reasons
+        # The response will be successful even if the email doesn't exist
+        return PasswordResetResponse(
+            message="If an account with that email exists, a password reset OTP has been sent."
+        )
+        
+    except Exception as e:
+        print(f"Password reset error: {e}")
+        # For security reasons, we don't reveal whether the email exists or not
+        return PasswordResetResponse(
+            message="If an account with that email exists, a password reset OTP has been sent."
+        )
+
+
+@router.post("/verify-otp", response_model=VerifyOTPResponse)
+async def verify_otp(
+    otp_data: VerifyOTPRequest,
+    supabase: Client = Depends(get_supabase)
+):
+    """Verify OTP for password reset."""
+    try:
+        # Verify the OTP token
+        response = supabase.auth.verify_otp({
+            "email": otp_data.email,
+            "token": otp_data.token,
+            "type": "email"
+        })
+        
+        if not response.user or not response.session:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired OTP"
+            )
+        
+        return VerifyOTPResponse(
+            message="OTP verified successfully. You can now update your password.",
+            access_token=response.session.access_token,
+            refresh_token=response.session.refresh_token
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"OTP verification error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP"
+        )
+
+
+@router.post("/update-password", response_model=UpdatePasswordResponse)
+async def update_password(
+    password_data: UpdatePasswordRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    supabase: Client = Depends(get_supabase),
+    admin_supabase: Client = Depends(get_supabase_admin)
+):
+    """Update user password after OTP verification."""
+    try:
+        # Get the user from the access token
+        user_response = supabase.auth.get_user(credentials.credentials)
+        
+        if not user_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired access token"
+            )
+        
+        # Update the user's password using admin client
+        response = admin_supabase.auth.admin.update_user_by_id(
+            user_response.user.id,
+            {"password": password_data.new_password}
+        )
+        
+        if not response.user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update password"
+            )
+        
+        return UpdatePasswordResponse(
+            message="Password updated successfully"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Password update error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update password"
         )

@@ -107,3 +107,36 @@ class UserMeResponse(BaseModel):
     email: str
     user_type: str  # admin, teacher, student, unknown
     profile: Optional[dict] = None  # AdminProfile, TeacherProfile, or StudentProfile
+
+
+class PasswordResetRequest(BaseModel):
+    """Password reset request schema."""
+    email: EmailStr
+
+
+class PasswordResetResponse(BaseModel):
+    """Password reset response schema."""
+    message: str = "Password reset email sent successfully"
+
+
+class VerifyOTPRequest(BaseModel):
+    """Verify OTP request schema."""
+    email: EmailStr
+    token: str
+
+
+class VerifyOTPResponse(BaseModel):
+    """Verify OTP response schema."""
+    message: str = "OTP verified successfully"
+    access_token: str
+    refresh_token: str
+
+
+class UpdatePasswordRequest(BaseModel):
+    """Update password request schema."""
+    new_password: str = Field(..., min_length=6, description="New password (minimum 6 characters)")
+
+
+class UpdatePasswordResponse(BaseModel):
+    """Update password response schema."""
+    message: str = "Password updated successfully"

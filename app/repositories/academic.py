@@ -14,6 +14,7 @@ class FacultyRepository(BaseRepository[Faculty]):
         """Get faculty by code."""
         try:
             response = self.supabase.table(self.table_name).select("*").eq("code", code).execute()
+            
             if response.data:
                 return self.model_class(**response.data[0])
             return None
