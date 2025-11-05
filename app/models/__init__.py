@@ -103,7 +103,6 @@ class Teacher(BaseModelConfig):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-
 class Student(BaseModelConfig):
     """Student model."""
     id: Optional[int] = None

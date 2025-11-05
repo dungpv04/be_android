@@ -17,6 +17,7 @@ dependencies = [
     "asyncpg>=0.29.0",
     "psycopg2-binary>=2.9.9",
     "qrcode[pil]>=8.2",
+    "hatchet-sdk>=1.21.0",
 ]
 
 [tool.uv]

@@ -14,11 +14,36 @@ services:
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-your-anon-key}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-your-service-role-key}
       
+      # Hatchet settings
+      - HATCHET_CLIENT_TOKEN=${HATCHET_CLIENT_TOKEN}
+      
       # Application settings
       - ENVIRONMENT=development
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    networks:
+      - app-network
+    depends_on:
+      - worker
+
+  # Hatchet Worker for Background Tasks
+  worker:
+    build: .
+    container_name: student-attendance-worker
+    command: ["uv", "run", "python", "worker/main.py"]
+    environment:
+      # Supabase settings (same as main app)
+      - SUPABASE_URL=${SUPABASE_URL:-https://your-project.supabase.co}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-your-anon-key}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-your-service-role-key}
+      
+      # Hatchet settings
+      - HATCHET_CLIENT_TOKEN=${HATCHET_CLIENT_TOKEN}
       
     volumes:
       - .:/app

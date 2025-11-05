@@ -8,6 +8,7 @@ from app.repositories import (
     ClassStudentRepository
 )
 from app.services.base import BaseService
+from app.core.scheduler import session_scheduler
 
 
 class ClassService(BaseService[Class]):
@@ -54,8 +55,36 @@ class TeachingSessionService(BaseService[TeachingSession]):
         repository = TeachingSessionRepository(supabase)
         super().__init__(repository)
     
+    async def create(self, data: Dict[str, Any]) -> Optional[TeachingSession]:
+        """Create teaching session and schedule auto-close task."""
+        try:
+            # Create the session first
+            session = await self.repository.create(data)
+            
+            if session:
+                # Schedule the auto-close task
+                scheduled_task_id = await session_scheduler.schedule_session_closure(
+                    session_id=session.id,
+                    session_date=session.session_date.strftime("%Y-%m-%d"),
+                    end_time=session.end_time.strftime("%H:%M:%S")
+                )
+                
+                if scheduled_task_id:
+                    print(f"Successfully scheduled auto-close for session {session.id}")
+                else:
+                    print(f"Warning: Failed to schedule auto-close for session {session.id}")
+                
+                return session
+            
+            return session
+            
+        except Exception as e:
+            print(f"Error creating teaching session with scheduler: {e}")
+            # Try to create without scheduler as fallback
+            return await self.repository.create(data)
+    
     async def delete(self, session_id: int) -> bool:
-        """Delete a teaching session with cascade (delete related attendance records first)."""
+        """Delete a teaching session with cascade."""
         try:
             # First, delete all attendance records for this session
             attendance_delete_response = (self.repository.supabase.table("attendances")

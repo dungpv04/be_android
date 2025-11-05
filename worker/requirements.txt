@@ -1,0 +1,4 @@
+hatchet-sdk
+supabase
+python-dotenv
+pydantic
