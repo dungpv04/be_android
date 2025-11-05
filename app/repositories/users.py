@@ -2,6 +2,52 @@ from typing import Optional, List, Dict, Any
 from supabase import Client
 from app.models import Student, Teacher
 from app.repositories.base import BaseRepository
+from app.schemas.users import TeacherCreate, StudentCreate
+
+
+class UserRepository:
+    """Repository for common user operations across students and teachers."""
+    
+    def __init__(self, supabase: Client):
+        self.supabase = supabase
+        self.student_repo = None  # Will be initialized when needed to avoid circular import
+        self.teacher_repo = None  # Will be initialized when needed to avoid circular import
+    
+    def _get_student_repo(self):
+        """Lazy initialization of student repository."""
+        if self.student_repo is None:
+            self.student_repo = StudentRepository(self.supabase)
+        return self.student_repo
+    
+    def _get_teacher_repo(self):
+        """Lazy initialization of teacher repository."""
+        if self.teacher_repo is None:
+            self.teacher_repo = TeacherRepository(self.supabase)
+        return self.teacher_repo
+    
+    async def check_email_exists(self, email: str) -> bool:
+        """Check if email exists in students or teachers table."""
+        try:
+            # Check students
+            student_response = self.supabase.table("students").select("id").eq("email", email).execute()
+            if student_response.data:
+                return True
+            
+            # Check teachers
+            teacher_response = self.supabase.table("teachers").select("id").eq("email", email).execute()
+            return bool(teacher_response.data)
+        except Exception as e:
+            print(f"Error checking email existence: {e}")
+            return False
+    
+    async def check_student_code_exists(self, student_code: str) -> bool:
+        """Check if student code exists."""
+        try:
+            response = self.supabase.table("students").select("id").eq("student_code", student_code).execute()
+            return bool(response.data)
+        except Exception as e:
+            print(f"Error checking student code existence: {e}")
+            return False
 
 
 class StudentRepository(BaseRepository[Student]):

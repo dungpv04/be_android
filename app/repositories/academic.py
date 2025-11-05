@@ -20,6 +20,17 @@ class FacultyRepository(BaseRepository[Faculty]):
         except Exception as e:
             print(f"Error getting faculty by code: {e}")
             return None
+    
+    async def get_by_name(self, name: str) -> Optional[Faculty]:
+        """Get faculty by name."""
+        try:
+            response = self.supabase.table(self.table_name).select("*").eq("name", name).execute()
+            if response.data:
+                return self.model_class(**response.data[0])
+            return None
+        except Exception as e:
+            print(f"Error getting faculty by name: {e}")
+            return None
 
 
 class DepartmentRepository(BaseRepository[Department]):
@@ -219,3 +230,59 @@ class StudyPhaseRepository(BaseRepository[StudyPhase]):
         except Exception as e:
             print(f"Error getting current study phase: {e}")
             return None
+
+
+class AcademicRepository:
+    """Aggregate repository for all academic operations."""
+    
+    def __init__(self, supabase: Client):
+        self.supabase = supabase
+        self.faculty_repo = FacultyRepository(supabase)
+        self.department_repo = DepartmentRepository(supabase)
+        self.major_repo = MajorRepository(supabase)
+        self.subject_repo = SubjectRepository(supabase)
+        self.academic_year_repo = AcademicYearRepository(supabase)
+        self.cohort_repo = CohortRepository(supabase)
+        self.semester_repo = SemesterRepository(supabase)
+        self.study_phase_repo = StudyPhaseRepository(supabase)
+    
+    # Faculty methods
+    async def get_faculty_by_name(self, name: str) -> Optional[Faculty]:
+        """Get faculty by name."""
+        return await self.faculty_repo.get_by_name(name)
+    
+    async def get_faculty_by_id(self, faculty_id: int) -> Optional[Faculty]:
+        """Get faculty by ID."""
+        return await self.faculty_repo.get_by_id(faculty_id)
+    
+    # Department methods
+    async def get_department_by_name(self, name: str) -> Optional[Department]:
+        """Get department by name."""
+        result = await self.department_repo.get_all(page=1, limit=1000)  # Get all departments
+        departments = result.get("items", [])
+        for dept in departments:
+            if dept.name == name:
+                return dept
+        return None
+    
+    # Major methods
+    async def get_major_by_name(self, name: str) -> Optional[Major]:
+        """Get major by name."""
+        result = await self.major_repo.get_all(page=1, limit=1000)  # Get all majors
+        majors = result.get("items", [])
+        for major in majors:
+            if major.name == name:
+                return major
+        return None
+    
+    # Cohort methods
+    async def get_cohort_by_name(self, name: str) -> Optional[Cohort]:
+        """Get cohort by name."""
+        result = await self.cohort_repo.get_all(page=1, limit=1000)  # Get all cohorts
+        cohorts = result.get("items", [])
+        for cohort in cohorts:
+            if cohort.name == name:
+                return cohort
+        return None
+    
+    # Other methods can be added as needed

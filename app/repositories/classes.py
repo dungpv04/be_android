@@ -22,6 +22,17 @@ class ClassRepository(BaseRepository[Class]):
             print(f"Error getting class by code: {e}")
             return None
     
+    async def get_by_name(self, name: str) -> Optional[Class]:
+        """Get class by name."""
+        try:
+            response = self.supabase.table(self.table_name).select("*").eq("name", name).execute()
+            if response.data:
+                return self.model_class(**response.data[0])
+            return None
+        except Exception as e:
+            print(f"Error getting class by name: {e}")
+            return None
+    
     async def get_by_teacher(self, teacher_id: int) -> List[Class]:
         """Get classes by teacher ID."""
         return await self.find_by_field("teacher_id", teacher_id)
@@ -158,6 +169,10 @@ class ClassRepository(BaseRepository[Class]):
         except Exception as e:
             print(f"Error in fallback method: {e}")
             return await self.get_all(page, limit)
+    
+    async def get_class_by_name(self, name: str) -> Optional[Class]:
+        """Get class by name."""
+        return await self.get_by_name(name)
 
 
 class TeachingSessionRepository(BaseRepository[TeachingSession]):

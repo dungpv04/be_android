@@ -29,6 +29,9 @@ from .classes import (
     ClassStudentCreate, ClassStudentResponse, ClassStudentDetailResponse,
     StudentClassDetailResponse, MultipleSessionsAttendanceRequest
 )
+from .excel import (
+    TeacherExcelRow, StudentExcelRow, BulkImportResult, ExcelValidationError
+)
 
 __all__ = [
     # Auth schemas
@@ -58,5 +61,8 @@ __all__ = [
     "TeachingSessionCreate", "TeachingSessionUpdate", "TeachingSessionResponse",
     "AttendanceCreate", "AttendanceUpdate", "AttendanceResponse", "AttendanceDetailResponse",
     "ClassStudentCreate", "ClassStudentResponse", "ClassStudentDetailResponse",
-    "StudentClassDetailResponse", "MultipleSessionsAttendanceRequest"
+    "StudentClassDetailResponse", "MultipleSessionsAttendanceRequest",
+    
+    # Excel schemas
+    "TeacherExcelRow", "StudentExcelRow", "BulkImportResult", "ExcelValidationError"
 ]
