@@ -33,7 +33,7 @@ class StudentService(BaseService[Student]):
                 return None
             
             # Create student record
-            student_dict = student_data.model_dump(exclude={"email", "password"})
+            student_dict = student_data.model_dump(exclude={"password"})
             student_dict["auth_id"] = auth_response["user"].id
             
             return await self.repository.create(student_dict)
@@ -111,7 +111,7 @@ class TeacherService(BaseService[Teacher]):
             print(f"Auth user created with ID: {auth_response['user'].id}")
             
             # Create teacher record
-            teacher_dict = teacher_data.model_dump(exclude={"email", "password"})
+            teacher_dict = teacher_data.model_dump(exclude={"password"})
             teacher_dict["auth_id"] = auth_response["user"].id
             
             print(f"Creating teacher profile with data: {teacher_dict}")

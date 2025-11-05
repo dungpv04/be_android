@@ -464,6 +464,27 @@ async def get_teacher(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
+@router.get("/teachers/code/{teacher_code}", response_model=TeacherResponse)
+async def get_teacher_by_code(
+    teacher_code: str,
+    supabase: Client = Depends(get_supabase)
+):
+    """Get teacher by teacher code."""
+    try:
+        teacher_service = TeacherService(supabase)
+        teacher = await teacher_service.get_by_teacher_code(teacher_code)
+        
+        if not teacher:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Teacher not found")
+        
+        return TeacherResponse(**teacher.model_dump())
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Get teacher by code error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
 @router.put("/teachers/{teacher_id}", response_model=BaseResponse)
 async def update_teacher(
     teacher_id: int,

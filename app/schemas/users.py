@@ -44,6 +44,7 @@ class StudentResponse(BaseModel):
     birth_date: Optional[date]
     hometown: Optional[str]
     auth_id: str
+    email: Optional[str]
     created_at: datetime
     updated_at: datetime
 
@@ -83,5 +84,6 @@ class TeacherResponse(BaseModel):
     birth_date: Optional[date]
     hometown: Optional[str]
     auth_id: str
+    email: Optional[str]
     created_at: datetime
     updated_at: datetime

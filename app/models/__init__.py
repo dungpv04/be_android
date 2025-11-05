@@ -100,6 +100,7 @@ class Teacher(BaseModelConfig):
     birth_date: Optional[date] = None
     hometown: Optional[str] = None
     auth_id: str
+    email: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
@@ -116,6 +117,7 @@ class Student(BaseModelConfig):
     birth_date: Optional[date] = None
     hometown: Optional[str] = None
     auth_id: str
+    email: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
