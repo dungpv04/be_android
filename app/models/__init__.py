@@ -63,6 +63,7 @@ class Subject(BaseModelConfig):
     department_id: Optional[int] = None
     name: str
     code: str
+    credits: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

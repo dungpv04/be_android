@@ -415,7 +415,7 @@ async def create_subject(
         
         return BaseResponse(
             message="Subject created successfully",
-            data={"id": subject.id, "name": subject.name, "code": subject.code}
+            data={"id": subject.id, "name": subject.name, "code": subject.code, "credits": subject.credits}
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

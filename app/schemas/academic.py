@@ -131,6 +131,7 @@ class SubjectCreate(BaseModel):
     department_id: int
     name: str = Field(..., min_length=1, max_length=255)
     code: str = Field(..., min_length=1, max_length=50)
+    credits: int = Field(..., ge=1, le=10)
 
 
 class SubjectUpdate(BaseModel):
@@ -138,6 +139,7 @@ class SubjectUpdate(BaseModel):
     department_id: Optional[int] = None
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     code: Optional[str] = Field(None, min_length=1, max_length=50)
+    credits: Optional[int] = Field(None, ge=1, le=10)
 
 
 class SubjectResponse(BaseModel):
@@ -146,6 +148,7 @@ class SubjectResponse(BaseModel):
     department_id: Optional[int]
     name: str
     code: str
+    credits: Optional[int]
     created_at: datetime
     updated_at: datetime
 
