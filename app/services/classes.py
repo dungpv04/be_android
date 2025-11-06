@@ -46,6 +46,21 @@ class ClassService(BaseService[Class]):
             raise ValueError("Class code already exists")
         
         return await self.repository.create(data)
+    
+    async def update(self, class_id: int, data: Dict[str, Any]) -> Optional[Class]:
+        """Update class with validation."""
+        # Check if the class exists
+        existing_class = await self.repository.get_by_id(class_id)
+        if not existing_class:
+            raise ValueError("Class not found")
+        
+        # If updating code, check if new code is unique (and different from current)
+        if "code" in data and data["code"] != existing_class.code:
+            existing_code = await self.repository.get_by_code(data["code"])
+            if existing_code:
+                raise ValueError("Class code already exists")
+        
+        return await self.repository.update(class_id, data)
 
 
 class TeachingSessionService(BaseService[TeachingSession]):

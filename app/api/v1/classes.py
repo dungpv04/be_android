@@ -133,6 +133,41 @@ async def get_class(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
+@router.put("/{class_id}", response_model=BaseResponse)
+async def update_class(
+    class_id: int,
+    class_data: ClassUpdate,
+    supabase: Client = Depends(get_supabase)
+):
+    """Update a class."""
+    try:
+        class_service = ClassService(supabase)
+        
+        # Convert to dict and exclude None values
+        update_data = {k: v for k, v in class_data.model_dump().items() if v is not None}
+        
+        if not update_data:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No data provided for update")
+        
+        updated_class = await class_service.update(class_id, update_data)
+        
+        if not updated_class:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Class not found")
+        
+        return BaseResponse(
+            success=True,
+            message="Class updated successfully",
+            data=ClassResponse(**updated_class.model_dump()).model_dump()
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Update class error: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
 # Teaching Session endpoints
 @router.post("/{class_id}/sessions", response_model=BaseResponse)
 async def create_teaching_session(

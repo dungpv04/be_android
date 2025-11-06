@@ -260,7 +260,10 @@ async def update_student(
         if not student:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found")
         
-        return BaseResponse(message="Student updated successfully")
+        return BaseResponse(
+            message="Student updated successfully",
+            data=StudentResponse(**student.model_dump()).model_dump()
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -501,11 +504,7 @@ async def update_teacher(
         
         return BaseResponse(
             message="Teacher updated successfully",
-            data={
-                "id": teacher.id,
-                "teacher_code": teacher.teacher_code,
-                "full_name": teacher.full_name
-            }
+            data=TeacherResponse(**teacher.model_dump()).model_dump()
         )
     except HTTPException:
         raise

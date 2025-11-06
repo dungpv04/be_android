@@ -29,6 +29,7 @@ class StudentUpdate(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     birth_date: Optional[date] = None
     hometown: Optional[str] = Field(None, max_length=255)
+    email: Optional[str] = Field(None, max_length=255)
 
 
 class StudentResponse(BaseModel):
@@ -71,6 +72,7 @@ class TeacherUpdate(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     birth_date: Optional[date] = None
     hometown: Optional[str] = Field(None, max_length=255)
+    email: Optional[str] = Field(None, max_length=255)
 
 
 class TeacherResponse(BaseModel):
